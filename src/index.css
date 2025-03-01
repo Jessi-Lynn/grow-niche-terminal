@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
 
 @tailwind base;
@@ -122,16 +123,17 @@
     @apply font-mono;
   }
 
-  /* Custom Scrollbar */
+  /* Custom Scrollbar - Native CSS implementation */
   ::-webkit-scrollbar {
     width: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-terminal-gray;
+    background-color: #333333;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-terminal-red rounded-full;
+    background-color: #ea384c;
+    border-radius: 9999px;
   }
 }
