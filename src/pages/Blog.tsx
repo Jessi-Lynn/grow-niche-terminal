@@ -52,7 +52,7 @@ const blogPostsData = [
   {
     id: '5',
     title: '5 Common Automation Mistakes and How to Avoid Them',
-    excerpt: 'Learn from others' failures and ensure your automation projects succeed from the start.',
+    excerpt: 'Learn from others\' failures and ensure your automation projects succeed from the start.',
     date: 'August 5, 2023',
     author: 'David Chen',
     readTime: '5 min read',
