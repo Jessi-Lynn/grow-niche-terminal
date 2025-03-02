@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, FileJson, ArrowRight } from 'lucide-react';
+import { FileJson, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BlueprintCardProps {
