@@ -83,7 +83,7 @@ const Contact = () => {
             </div>
             
             <div>
-              <ContactForm onSubmit={handleSubmit} loading={loading} />
+              <ContactForm />
             </div>
           </div>
         </div>
