@@ -9,7 +9,54 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      blueprints: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string
+          details: string | null
+          featured: boolean | null
+          file_path: string | null
+          id: string
+          price: number
+          requirements: string[] | null
+          slug: string
+          title: string
+          updated_at: string | null
+          version: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description: string
+          details?: string | null
+          featured?: boolean | null
+          file_path?: string | null
+          id?: string
+          price: number
+          requirements?: string[] | null
+          slug: string
+          title: string
+          updated_at?: string | null
+          version?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string
+          details?: string | null
+          featured?: boolean | null
+          file_path?: string | null
+          id?: string
+          price?: number
+          requirements?: string[] | null
+          slug?: string
+          title?: string
+          updated_at?: string | null
+          version?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
