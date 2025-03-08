@@ -13,9 +13,4 @@ export const supabase = createClient(supabaseUrl || '', supabaseKey || '', {
     persistSession: true,
     autoRefreshToken: true,
   },
-  // Enable better DX in development
-  global: {
-    fetch: (...args) => fetch(...args),
-  },
 });
-
