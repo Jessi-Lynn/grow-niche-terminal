@@ -7,3 +7,7 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+[build.environment]
+  # This tells netlify that we want environment variables considered
+  NODE_VERSION = "18"
