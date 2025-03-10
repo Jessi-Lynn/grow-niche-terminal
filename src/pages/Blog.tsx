@@ -1,75 +1,67 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import BlogPost from '@/components/BlogPost';
 import Terminal from '@/components/Terminal';
 import { Search, Tag, Calendar } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { toast } from '@/components/ui/use-toast';
 
-// Dummy blog post data
-const blogPostsData = [
-  {
-    id: '1',
-    title: 'The Ultimate Guide to Business Process Automation',
-    excerpt: 'Discover how to identify, prioritize, and automate key business processes to save time and reduce errors.',
-    date: 'May 15, 2023',
-    author: 'Alex Johnson',
-    readTime: '8 min read',
-    slug: 'ultimate-guide-business-process-automation',
-    tags: ['Automation', 'Business', 'Workflow'],
-    featured: true
-  },
-  {
-    id: '2',
-    title: 'How JSON Blueprints Are Revolutionizing Workflow Automation',
-    excerpt: 'Learn how structured JSON blueprints are making complex automation accessible to businesses of all sizes.',
-    date: 'June 3, 2023',
-    author: 'Sarah Williams',
-    readTime: '6 min read',
-    slug: 'json-blueprints-revolutionizing-workflow-automation',
-    tags: ['JSON', 'Blueprints', 'Innovation']
-  },
-  {
-    id: '3',
-    title: 'Case Study: E-commerce Business Saves 30 Hours Per Week With Automation',
-    excerpt: 'See how an online retailer transformed their operations with our custom automation blueprints.',
-    date: 'June 28, 2023',
-    author: 'Mike Peterson',
-    readTime: '10 min read',
-    slug: 'case-study-ecommerce-automation',
-    tags: ['Case Study', 'E-commerce', 'Success Story']
-  },
-  {
-    id: '4',
-    title: 'The ROI of Automation: Calculating Your Potential Savings',
-    excerpt: 'A practical guide to measuring the return on investment for automation initiatives in your business.',
-    date: 'July 12, 2023',
-    author: 'Emma Roberts',
-    readTime: '7 min read',
-    slug: 'roi-automation-calculating-potential-savings',
-    tags: ['ROI', 'Business', 'Analytics']
-  },
-  {
-    id: '5',
-    title: '5 Common Automation Mistakes and How to Avoid Them',
-    excerpt: 'Learn from others\' failures and ensure your automation projects succeed from the start.',
-    date: 'August 5, 2023',
-    author: 'David Chen',
-    readTime: '5 min read',
-    slug: '5-common-automation-mistakes-avoid',
-    tags: ['Best Practices', 'Mistakes', 'Tips']
-  }
-];
-
-// Extract all unique tags
-const allTags = [...new Set(blogPostsData.flatMap(post => post.tags))];
+interface BlogPostData {
+  id: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  author: string;
+  date: string;
+  read_time: string;
+  slug: string;
+  tags: string[];
+  featured: boolean;
+}
 
 const Blog = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('All');
+  const [blogPosts, setBlogPosts] = useState<BlogPostData[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    fetchBlogPosts();
+  }, []);
+
+  const fetchBlogPosts = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .order('date', { ascending: false });
+        
+      if (error) throw error;
+      
+      setBlogPosts(data || []);
+      
+      // Extract all unique tags
+      const tags = [...new Set(data?.flatMap(post => post.tags) || [])];
+      setAllTags(tags);
+    } catch (error) {
+      console.error('Error fetching blog posts:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load blog posts',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Filter blog posts based on search term and tag
-  const filteredPosts = blogPostsData.filter(post => {
+  const filteredPosts = blogPosts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          post.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTag = selectedTag === 'All' || post.tags.includes(selectedTag);
@@ -78,7 +70,16 @@ const Blog = () => {
   });
   
   // Get featured post
-  const featuredPost = blogPostsData.find(post => post.featured);
+  const featuredPost = blogPosts.find(post => post.featured);
+  
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    }).format(date);
+  };
   
   return (
     <div className="min-h-screen bg-terminal-black">
@@ -156,13 +157,13 @@ const Blog = () => {
               </div>
               
               <h3 className="text-2xl font-bold mb-3 text-terminal-white hover:text-terminal-red transition-colors duration-300">
-                <a href={`/blog/${featuredPost.slug}`}>{featuredPost.title}</a>
+                <Link to={`/blog/${featuredPost.slug}`}>{featuredPost.title}</Link>
               </h3>
               
               <div className="flex flex-wrap gap-4 mb-3 text-xs text-terminal-white/60">
                 <div className="flex items-center">
                   <Calendar size={14} className="mr-1" />
-                  {featuredPost.date}
+                  {formatDate(featuredPost.date)}
                 </div>
                 <div className="flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -174,7 +175,7 @@ const Blog = () => {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  {featuredPost.readTime}
+                  {featuredPost.read_time}
                 </div>
               </div>
               
@@ -184,21 +185,25 @@ const Blog = () => {
               
               <div className="flex flex-wrap gap-2 mb-4">
                 {featuredPost.tags.map((tag, index) => (
-                  <span key={index} className="text-xs bg-terminal-gray/30 text-terminal-white/80 px-2 py-1 rounded">
+                  <span 
+                    key={index} 
+                    className="text-xs bg-terminal-gray/30 text-terminal-white/80 px-2 py-1 rounded cursor-pointer hover:bg-terminal-gray/40"
+                    onClick={() => setSelectedTag(tag)}
+                  >
                     {tag}
                   </span>
                 ))}
               </div>
               
-              <a 
-                href={`/blog/${featuredPost.slug}`}
+              <Link 
+                to={`/blog/${featuredPost.slug}`}
                 className="text-terminal-red hover:underline text-sm inline-flex items-center"
               >
                 Read full article
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
-              </a>
+              </Link>
             </div>
           </div>
         </section>
@@ -212,15 +217,19 @@ const Blog = () => {
           </h2>
           
           <div className="glass-panel rounded-md divide-y divide-terminal-gray/50">
-            {filteredPosts.length > 0 ? (
+            {loading ? (
+              <div className="py-12 text-center">
+                <p className="text-terminal-white">Loading blog posts...</p>
+              </div>
+            ) : filteredPosts.length > 0 ? (
               filteredPosts.map(post => (
                 <BlogPost
                   key={post.id}
                   title={post.title}
                   excerpt={post.excerpt}
-                  date={post.date}
+                  date={formatDate(post.date)}
                   author={post.author}
-                  readTime={post.readTime}
+                  readTime={post.read_time}
                   slug={post.slug}
                 />
               ))
