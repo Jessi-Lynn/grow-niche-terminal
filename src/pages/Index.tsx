@@ -170,10 +170,15 @@ const Index = () => {
               </ul>
             </div>
             
-            <div>
-              <TerminalComponent title="terminal@growyourniche: ~/features">
-                <TypingEffect text="git clone https://github.com/growyourniche/blueprints.git" speed={50} delay={500} cursor />
-              </TerminalComponent>
+            <div className="bg-terminal-black/50 p-6 rounded-lg border border-terminal-gray/20">
+              <h3 className="text-xl font-semibold text-terminal-white mb-4">Why Choose Our Blueprints?</h3>
+              <p className="text-terminal-white/70 mb-4">
+                Our JSON blueprints are designed by industry experts with years of experience in business automation.
+                Each blueprint is thoroughly tested and optimized for maximum efficiency and ease of use.
+              </p>
+              <p className="text-terminal-white/70">
+                Start automating your business processes today and focus on what truly matters - growing your business.
+              </p>
             </div>
           </div>
         </div>
