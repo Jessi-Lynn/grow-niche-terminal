@@ -12,6 +12,9 @@ import Services from "./pages/Services";
 import Blog from "./pages/Blog";
 import Contact from "./pages/Contact";
 import Admin from "./pages/Admin";
+import Team from "./pages/Team";
+import Courses from "./pages/Courses";
+import Tools from "./pages/Tools";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +29,9 @@ const App = () => (
           <Route path="/blueprints" element={<Blueprints />} />
           <Route path="/blueprints/:slug" element={<BlueprintDetails />} />
           <Route path="/services" element={<Services />} />
+          <Route path="/team" element={<Team />} />
+          <Route path="/courses" element={<Courses />} />
+          <Route path="/tools" element={<Tools />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/admin" element={<Admin />} />
