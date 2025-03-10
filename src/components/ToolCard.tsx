@@ -1,5 +1,5 @@
 
-import { Check, Download, ExternalLink } from 'lucide-react';
+import { Check, Download, ExternalLink, Tool } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
@@ -41,7 +41,7 @@ const ToolCard = ({ tool, isReversed = false }: ToolCardProps) => {
       
       <div className="md:w-1/2">
         <div className="glass-panel p-8 rounded-md inline-block mb-6">
-          <Wrench size={32} className="text-terminal-red" />
+          <Tool size={32} className="text-terminal-red" />
         </div>
         
         <h2 className="text-2xl md:text-3xl font-bold text-terminal-white mb-4">
