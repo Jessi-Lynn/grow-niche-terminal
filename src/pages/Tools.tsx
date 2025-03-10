@@ -22,7 +22,7 @@ const tools: ToolItem[] = [
     ],
     linkUrl: 'https://example.com/workflow-analyzer',
     isFree: false,
-    affiliateLink: 'https://example.com/affiliate/workflow-analyzer',
+    affiliateLink: 'https://your-affiliate-link-1.com', // Update this URL
   },
   {
     id: '2',
@@ -38,7 +38,7 @@ const tools: ToolItem[] = [
     ],
     linkUrl: 'https://example.com/blueprint-generator',
     isFree: false,
-    affiliateLink: 'https://example.com/affiliate/blueprint-generator',
+    affiliateLink: 'https://your-affiliate-link-2.com', // Update this URL
   },
   {
     id: '3',
@@ -54,7 +54,7 @@ const tools: ToolItem[] = [
     ],
     linkUrl: 'https://example.com/process-timer',
     isFree: true,
-    affiliateLink: 'https://example.com/affiliate/process-timer',
+    affiliateLink: 'https://your-affiliate-link-3.com', // Update this URL
   },
 ];
 
