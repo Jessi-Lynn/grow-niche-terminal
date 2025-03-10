@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -45,7 +44,6 @@ const Blog = () => {
       
       setBlogPosts(data || []);
       
-      // Extract all unique tags
       const tags = [...new Set(data?.flatMap(post => post.tags) || [])];
       setAllTags(tags);
     } catch (error) {
@@ -60,7 +58,6 @@ const Blog = () => {
     }
   };
   
-  // Filter blog posts based on search term and tag
   const filteredPosts = blogPosts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          post.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
@@ -68,9 +65,6 @@ const Blog = () => {
     
     return matchesSearch && matchesTag;
   });
-  
-  // Get featured post
-  const featuredPost = blogPosts.find(post => post.featured);
   
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -167,7 +161,7 @@ const Blog = () => {
                 </div>
                 <div className="flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   {featuredPost.author}
                 </div>

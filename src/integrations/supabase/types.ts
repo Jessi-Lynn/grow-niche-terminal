@@ -17,6 +17,10 @@ export type Database = {
           excerpt: string
           featured: boolean
           id: string
+          meta_description: string | null
+          meta_keywords: string | null
+          meta_title: string | null
+          og_image: string | null
           read_time: string
           slug: string
           tags: string[]
@@ -29,6 +33,10 @@ export type Database = {
           excerpt: string
           featured?: boolean
           id?: string
+          meta_description?: string | null
+          meta_keywords?: string | null
+          meta_title?: string | null
+          og_image?: string | null
           read_time?: string
           slug: string
           tags?: string[]
@@ -41,6 +49,10 @@ export type Database = {
           excerpt?: string
           featured?: boolean
           id?: string
+          meta_description?: string | null
+          meta_keywords?: string | null
+          meta_title?: string | null
+          og_image?: string | null
           read_time?: string
           slug?: string
           tags?: string[]

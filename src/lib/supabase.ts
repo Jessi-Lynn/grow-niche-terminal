@@ -1,12 +1,13 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Use environment variables with fallbacks to prevent builds from failing
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Use environment variables with more robust fallbacks
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://example.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
 
-if (!supabaseUrl || !supabaseKey) {
-  console.warn('Supabase environment variables not found. Some features may not work correctly.');
+// Log warning if real values are not provided
+if (supabaseUrl === 'https://example.supabase.co' || supabaseKey === 'your-anon-key') {
+  console.warn('Using placeholder Supabase credentials. Set proper environment variables for production use.');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -16,7 +17,10 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-export const isSupabaseConfigured = !!(supabaseUrl && supabaseKey);
+export const isSupabaseConfigured = (
+  supabaseUrl !== 'https://example.supabase.co' && 
+  supabaseKey !== 'your-anon-key'
+);
 
 // Add the SQL command that should be run on the Supabase database:
 /**

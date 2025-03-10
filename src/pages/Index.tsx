@@ -1,108 +1,113 @@
-
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, FileJson, Code, Zap } from 'lucide-react';
-import Terminal from '@/components/Terminal';
+import { Terminal, Database, Bot } from 'lucide-react';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import TypingEffect from '@/components/TypingEffect';
 import BlueprintCard from '@/components/BlueprintCard';
 import ServiceCard from '@/components/ServiceCard';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import TerminalComponent from '@/components/Terminal';
+import { supabase } from '@/lib/supabase';
 
-const featuredBlueprints = [
-  {
-    id: '1',
-    title: 'E-commerce Automation Blueprint',
-    description: 'Comprehensive JSON blueprint for automating product listing, inventory management, and order processing.',
-    price: 49.99,
-    category: 'E-commerce',
-    slug: 'ecommerce-automation',
-    featured: true
-  },
-  {
-    id: '2',
-    title: 'Social Media Content Pipeline',
-    description: 'Streamline your social media workflow with this advanced content scheduling and posting blueprint.',
-    price: 39.99,
-    category: 'Marketing',
-    slug: 'social-media-content-pipeline'
-  },
-  {
-    id: '3',
-    title: 'Data Scraping & Analytics Framework',
-    description: 'Extract, transform, and analyze data from multiple sources with this powerful automation blueprint.',
-    price: 59.99,
-    category: 'Data',
-    slug: 'data-scraping-analytics-framework'
-  }
-];
+interface Blueprint {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  slug: string;
+  featured: boolean;
+}
 
 const Index = () => {
-  const [showTerminalContent, setShowTerminalContent] = useState(false);
-  const [animationComplete, setAnimationComplete] = useState(false);
+  const [featuredBlueprints, setFeaturedBlueprints] = useState<Blueprint[]>([]);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowTerminalContent(true);
-    }, 500);
-    
-    return () => clearTimeout(timer);
+    fetchFeaturedBlueprints();
   }, []);
-  
-  const welcomeMessage = "Welcome to GrowYourNiche - Your automation journey begins here.\nLet's build something great together.";
+
+  const fetchFeaturedBlueprints = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('blueprints')
+        .select('*')
+        .eq('featured', true);
+        
+      if (error) throw error;
+      
+      setFeaturedBlueprints(data || []);
+    } catch (error) {
+      console.error('Error fetching featured blueprints:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   return (
     <div className="min-h-screen bg-terminal-black">
       <Navbar />
       
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,#ea384c10,transparent_70%)]"></div>
-        
-        <div className="container mx-auto max-w-6xl relative z-10">
-          <div className="flex flex-col items-center text-center mb-12">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-terminal-white">
-              <span className="text-terminal-red">Automate</span> Your Growth
-            </h1>
-            
-            <p className="text-xl text-terminal-white/70 max-w-2xl mb-8">
-              Premium JSON blueprints and custom automation services to scale your business operations.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/blueprints" className="glow-button">
-                Explore Blueprints
-              </Link>
-              <Link to="/services" className="border border-terminal-white text-terminal-white px-6 py-2 rounded font-mono font-bold transition-all duration-300 hover:bg-terminal-white hover:text-terminal-black">
-                Our Services
-              </Link>
+      <section className="pt-32 pb-16 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold mb-6 text-terminal-white">
+                Automate Your Business with JSON <span className="text-terminal-red">Blueprints</span>
+              </h1>
+              
+              <p className="text-terminal-white/70 mb-8">
+                Unlock the power of automation with our curated collection of JSON blueprints. Streamline your workflows, save time, and scale your business effortlessly.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link
+                  to="/blueprints"
+                  className="glow-button"
+                >
+                  Explore Blueprints
+                </Link>
+                
+                <Link
+                  to="/contact"
+                  className="text-terminal-white hover:text-terminal-red transition-colors duration-300"
+                >
+                  Contact Us
+                </Link>
+              </div>
             </div>
-          </div>
-          
-          <div className="mt-12 animate-fadeIn opacity-0" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
-            <Terminal fullWidth title="terminal@growyourniche: ~/automate" autoType>
-              {welcomeMessage}
-            </Terminal>
+            
+            <div>
+              <TerminalComponent title="terminal@growyourniche: ~">
+                <TypingEffect text="npm install @growyourniche/automation" speed={50} delay={500} cursor />
+              </TerminalComponent>
+            </div>
           </div>
         </div>
       </section>
       
       {/* Featured Blueprints */}
-      <section className="py-20 px-4 bg-terminal-gray/5">
+      <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
-          <div className="flex justify-between items-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold text-terminal-white">
-              <span className="text-terminal-red">Featured</span> Blueprints
+          <div className="flex flex-col md:flex-row justify-between items-center mb-12">
+            <h2 className="text-2xl font-bold text-terminal-white mb-4 md:mb-0">
+              Featured <span className="text-terminal-red">Blueprints</span>
             </h2>
-            <Link to="/blueprints" className="flex items-center text-terminal-white hover:text-terminal-red transition-colors duration-300">
-              View All <ArrowRight size={16} className="ml-1" />
+            
+            <Link
+              to="/blueprints"
+              className="glow-button"
+            >
+              View All Blueprints
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredBlueprints.map(blueprint => (
               <BlueprintCard
-                key={blueprint.id}
+                key={blueprint.id} // Use blueprint.id as the key, but don't pass it as a prop
                 id={blueprint.id}
                 title={blueprint.title}
                 description={blueprint.description}
@@ -116,71 +121,90 @@ const Index = () => {
         </div>
       </section>
       
-      {/* Services Section */}
-      <section className="py-20 px-4">
+      {/* Services */}
+      <section className="py-16 px-4">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="text-2xl md:text-3xl font-bold text-terminal-white mb-4">
-              Our <span className="text-terminal-red">Services</span>
-            </h2>
-            <p className="text-terminal-white/70 max-w-2xl mx-auto">
-              We don't just provide blueprints - we help you implement custom automation solutions tailored to your business needs.
-            </p>
-          </div>
+          <h2 className="text-2xl font-bold text-terminal-white mb-8 text-center">
+            Our <span className="text-terminal-red">Services</span>
+          </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <ServiceCard
-              title="Custom Blueprint Development"
-              description="Tailor-made JSON blueprints designed specifically for your business workflows and integration requirements."
-              icon={<FileJson size={32} />}
-              link="/services#custom-blueprints"
-            />
-            
-            <ServiceCard
-              title="Implementation & Integration"
-              description="Expert assistance in implementing blueprints and integrating them with your existing systems and tools."
-              icon={<Code size={32} />}
-              link="/services#implementation"
-            />
-            
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <ServiceCard
               title="Automation Consulting"
-              description="Strategic guidance on identifying and prioritizing automation opportunities to maximize ROI."
-              icon={<Zap size={32} />}
-              link="/services#consulting"
+              description="Expert guidance to identify and implement automation opportunities in your business."
+              icon={<Terminal size={48} />}
+              link="/services"
             />
-          </div>
-          
-          <div className="text-center mt-12">
-            <Link to="/services" className="glow-button">
-              Explore All Services
-            </Link>
+            
+            <ServiceCard
+              title="Custom Blueprint Development"
+              description="Tailored JSON blueprints designed to meet your specific business requirements."
+              icon={<Database size={48} />}
+              link="/services"
+            />
+            
+            <ServiceCard
+              title="AI-Powered Solutions"
+              description="Leverage the power of AI to optimize your business processes and gain a competitive edge."
+              icon={<Bot size={48} />}
+              link="/services"
+            />
           </div>
         </div>
       </section>
       
-      {/* CTA Section */}
-      <section className="py-20 px-4 bg-terminal-red/5 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,#ea384c10,transparent_70%)]"></div>
-        
-        <div className="container mx-auto max-w-6xl relative z-10">
-          <div className="glass-panel rounded-lg p-8 md:p-12 text-center">
-            <h2 className="text-2xl md:text-3xl font-bold text-terminal-white mb-4">
-              Ready to <span className="text-terminal-red">Supercharge</span> Your Workflow?
-            </h2>
-            
-            <p className="text-terminal-white/70 max-w-2xl mx-auto mb-8">
-              Whether you need a pre-built blueprint or a custom automation solution, we've got you covered. Let's transform your business operations together.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/blueprints" className="glow-button">
-                Browse Blueprints
-              </Link>
-              <Link to="/contact" className="border border-terminal-white text-terminal-white px-6 py-2 rounded font-mono font-bold transition-all duration-300 hover:bg-terminal-white hover:text-terminal-black">
-                Contact Us
-              </Link>
+      {/* Features */}
+      <section className="py-16 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h2 className="text-2xl font-bold text-terminal-white mb-6">
+                Key <span className="text-terminal-red">Features</span>
+              </h2>
+              
+              <ul className="list-disc pl-5 text-terminal-white/70 space-y-2">
+                <li>Pre-built JSON blueprints for various business processes</li>
+                <li>Customizable templates to fit your unique needs</li>
+                <li>Step-by-step guides and documentation</li>
+                <li>Dedicated support and community forum</li>
+                <li>Regular updates and new blueprint releases</li>
+              </ul>
             </div>
+            
+            <div>
+              <TerminalComponent title="terminal@growyourniche: ~/features">
+                <TypingEffect text="git clone https://github.com/growyourniche/blueprints.git" speed={50} delay={500} cursor />
+              </TerminalComponent>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      {/* CTA */}
+      <section className="py-24 px-4">
+        <div className="container mx-auto max-w-4xl text-center">
+          <h2 className="text-3xl font-bold text-terminal-white mb-8">
+            Ready to <span className="text-terminal-red">Automate</span> Your Business?
+          </h2>
+          
+          <p className="text-terminal-white/70 mb-12">
+            Join our community of forward-thinking entrepreneurs and start automating your business processes today.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Link
+              to="/blueprints"
+              className="glow-button"
+            >
+              Browse Blueprints
+            </Link>
+            
+            <Link
+              to="/contact"
+              className="text-terminal-white hover:text-terminal-red transition-colors duration-300"
+            >
+              Request a Demo
+            </Link>
           </div>
         </div>
       </section>
