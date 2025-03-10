@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -18,6 +17,7 @@ interface BlogPostData {
   slug: string;
   tags: string[];
   featured: boolean;
+  image: string;
 }
 
 const BlogPost = () => {
@@ -65,13 +65,6 @@ const BlogPost = () => {
       month: 'long', 
       day: 'numeric' 
     }).format(date);
-  };
-  
-  // Split content into paragraphs for better display
-  const formatContent = (content: string) => {
-    return content.split('\n\n').map((paragraph, index) => (
-      <p key={index} className="mb-4">{paragraph}</p>
-    ));
   };
   
   return (
@@ -132,12 +125,23 @@ const BlogPost = () => {
                   {post.read_time}
                 </div>
               </div>
+
+              {post.image && (
+                <div className="mb-8">
+                  <img 
+                    src={post.image} 
+                    alt={post.title}
+                    className="w-full h-auto rounded-md"
+                  />
+                </div>
+              )}
               
-              <div className="prose prose-invert max-w-none mb-8">
-                {formatContent(post.content)}
-              </div>
+              <div 
+                className="prose prose-invert max-w-none mb-8"
+                dangerouslySetInnerHTML={{ __html: post.content }}
+              />
               
-              {post.tags.length > 0 && (
+              {post.tags && post.tags.length > 0 && (
                 <div className="border-t border-terminal-gray/30 pt-6 mt-8">
                   <h3 className="text-terminal-white font-bold mb-3">Tags:</h3>
                   <div className="flex flex-wrap gap-2">
