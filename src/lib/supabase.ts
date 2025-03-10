@@ -8,13 +8,7 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Create Supabase client
 export const supabase = createClient(
   supabaseUrl || 'https://example.supabase.co', 
-  supabaseKey || 'your-anon-key',
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  }
+  supabaseKey || 'your-anon-key'
 );
 
 // Helper to check if proper credentials are configured
@@ -30,12 +24,3 @@ if (!isSupabaseConfigured) {
   console.info('Required environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
 }
 
-// Add the SQL command that should be run on the Supabase database:
-/**
- * -- Add SEO meta fields to blog_posts table
- * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS meta_title text;
- * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS meta_description text;
- * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS meta_keywords text;
- * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS og_image text;
- * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS image text;
- */

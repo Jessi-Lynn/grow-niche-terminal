@@ -151,10 +151,12 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
 
     try {
       setSaving(true);
+      console.log('Starting blog post save...');
       
       let updatedData = { ...formData };
       
       if (mainImageFile) {
+        console.log('Uploading main image...');
         const mainImageUrl = await uploadImage(mainImageFile, 'main');
         if (mainImageUrl) {
           updatedData.image = mainImageUrl;
@@ -162,6 +164,7 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
       }
       
       if (ogImageFile) {
+        console.log('Uploading OG image...');
         const ogImageUrl = await uploadImage(ogImageFile, 'og');
         if (ogImageUrl) {
           updatedData.og_image = ogImageUrl;
@@ -173,23 +176,32 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
         date: updatedData.date || new Date().toISOString(),
         tags: updatedData.tags.filter(tag => tag.trim() !== '')
       };
+
+      console.log('Saving blog post data:', postData);
       
       let result;
       
       if (isNewPost) {
         result = await supabase
           .from('blog_posts')
-          .insert(postData)
-          .select();
+          .insert([postData])
+          .select()
+          .single();
       } else {
         result = await supabase
           .from('blog_posts')
           .update(postData)
           .eq('id', formData.id)
-          .select();
+          .select()
+          .single();
       }
       
-      if (result.error) throw result.error;
+      if (result.error) {
+        console.error('Supabase error:', result.error);
+        throw result.error;
+      }
+      
+      console.log('Blog post saved successfully:', result.data);
       
       toast({
         title: 'Success!',
@@ -202,7 +214,7 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
       console.error('Error saving blog post:', error);
       toast({
         title: 'Error',
-        description: `Failed to ${isNewPost ? 'create' : 'update'} blog post`,
+        description: `Failed to ${isNewPost ? 'create' : 'update'} blog post. Please check console for details.`,
         variant: 'destructive',
       });
     } finally {
