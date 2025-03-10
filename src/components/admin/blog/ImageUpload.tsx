@@ -39,37 +39,15 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
       setUploadingImage(true);
       
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `${slug || 'post'}-${fileName}`;
+      const fileName = `${slug}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `${type === 'main' ? 'main' : 'og'}/${fileName}`;
       
       console.log(`Uploading ${type} image to path: ${filePath}`);
-      
-      // Check if the bucket exists
-      const { data: buckets, error: bucketsError } = await supabase
-        .storage
-        .listBuckets();
-        
-      if (bucketsError) {
-        console.error('Error listing buckets:', bucketsError);
-        throw bucketsError;
-      }
-      
-      const blogImagesBucketExists = buckets.some(bucket => bucket.name === 'blog_images');
-      
-      if (!blogImagesBucketExists) {
-        console.error('blog_images bucket does not exist');
-        toast({
-          title: 'Storage Error',
-          description: 'The blog_images storage bucket does not exist. Please contact an administrator.',
-          variant: 'destructive',
-        });
-        return;
-      }
       
       // Upload the file
       const { error: uploadError, data } = await supabase.storage
         .from('blog_images')
-        .upload(filePath, file);
+        .upload(filePath, file, { upsert: true });
         
       if (uploadError) {
         console.error(`Error uploading ${type} image:`, uploadError);
@@ -84,6 +62,11 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
         .getPublicUrl(filePath);
         
       console.log(`Public URL for ${type} image:`, publicUrl);
+      
+      toast({
+        title: 'Upload successful',
+        description: `${type === 'main' ? 'Main' : 'OG'} image uploaded successfully.`,
+      });
       
       onImageUploaded(publicUrl);
     } catch (error) {
@@ -100,6 +83,7 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
 
   const previewUrl = imageFile ? URL.createObjectURL(imageFile) : imageUrl;
 
+  // Render uploaded image with remove button
   if (previewUrl) {
     return (
       <div className="space-y-3">
@@ -124,15 +108,18 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
             className="hidden" 
             accept="image/jpeg,image/jpg"
             onChange={handleFileChange} 
+            disabled={uploadingImage}
           />
           <span className="flex items-center">
-            <Upload size={14} className="mr-1" /> Change image
+            <Upload size={14} className="mr-1" /> 
+            {uploadingImage ? 'Uploading...' : 'Change image'}
           </span>
         </label>
       </div>
     );
   }
 
+  // Render upload button
   return (
     <label className="cursor-pointer block w-full text-center">
       <input 
@@ -140,8 +127,9 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
         className="hidden" 
         accept="image/jpeg,image/jpg"
         onChange={handleFileChange} 
+        disabled={uploadingImage}
       />
-      <div className="space-y-2">
+      <div className={`space-y-2 ${uploadingImage ? 'opacity-50' : ''}`}>
         {type === 'main' ? (
           <ImageIcon className="mx-auto h-12 w-12 text-terminal-red" />
         ) : (
@@ -149,13 +137,17 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
         )}
         
         <p className={`${type === 'main' ? 'text-terminal-white' : 'text-sm text-terminal-white'}`}>
-          {type === 'main' 
-            ? 'Drag & drop your JPEG image here or ' 
-            : 'Upload JPEG image for social sharing'}
-          {type === 'main' && <span className="text-terminal-red underline">browse</span>}
+          {uploadingImage ? 'Uploading...' : (
+            <>
+              {type === 'main' 
+                ? 'Drag & drop your JPEG image here or ' 
+                : 'Upload JPEG image for social sharing'}
+              {type === 'main' && <span className="text-terminal-red underline">browse</span>}
+            </>
+          )}
         </p>
         
-        {type === 'main' && (
+        {type === 'main' && !uploadingImage && (
           <p className="text-xs text-terminal-white/70">
             This image will be displayed at the top of your blog post
           </p>
