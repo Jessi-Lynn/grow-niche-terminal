@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -116,22 +117,55 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `${formData.slug || 'post'}-${fileName}`;
       
+      console.log(`Uploading ${type} image to path: ${filePath}`);
+      
+      // Check if the bucket exists
+      const { data: buckets, error: bucketsError } = await supabase
+        .storage
+        .listBuckets();
+        
+      if (bucketsError) {
+        console.error('Error listing buckets:', bucketsError);
+        throw bucketsError;
+      }
+      
+      const blogImagesBucketExists = buckets.some(bucket => bucket.name === 'blog_images');
+      
+      if (!blogImagesBucketExists) {
+        console.error('blog_images bucket does not exist');
+        toast({
+          title: 'Storage Error',
+          description: 'The blog_images storage bucket does not exist. Please contact an administrator.',
+          variant: 'destructive',
+        });
+        return null;
+      }
+      
+      // Upload the file
       const { error: uploadError, data } = await supabase.storage
         .from('blog_images')
         .upload(filePath, file);
         
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error(`Error uploading ${type} image:`, uploadError);
+        throw uploadError;
+      }
       
+      console.log(`Successfully uploaded ${type} image:`, data);
+      
+      // Get the public URL
       const { data: { publicUrl } } = supabase.storage
         .from('blog_images')
         .getPublicUrl(filePath);
         
+      console.log(`Public URL for ${type} image:`, publicUrl);
+      
       return publicUrl;
     } catch (error) {
       console.error(`Error uploading ${type} image:`, error);
       toast({
         title: 'Upload Error',
-        description: `Failed to upload ${type === 'main' ? 'main' : 'OG'} image.`,
+        description: `Failed to upload ${type === 'main' ? 'main' : 'OG'} image: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
       return null;

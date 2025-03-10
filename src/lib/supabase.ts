@@ -8,7 +8,13 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Create Supabase client
 export const supabase = createClient(
   supabaseUrl || 'https://example.supabase.co', 
-  supabaseKey || 'your-anon-key'
+  supabaseKey || 'your-anon-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    }
+  }
 );
 
 // Helper to check if proper credentials are configured
@@ -23,4 +29,3 @@ if (!isSupabaseConfigured) {
   console.warn('Using placeholder Supabase credentials. Set proper environment variables in your .env.local file.');
   console.info('Required environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
 }
-
