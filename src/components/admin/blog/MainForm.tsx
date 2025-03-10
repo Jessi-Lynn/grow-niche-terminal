@@ -3,6 +3,7 @@ import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import RichTextEditor from './RichTextEditor';
 
 interface MainFormProps {
@@ -116,13 +117,11 @@ const MainForm = ({
 
       <div className="md:col-span-2">
         <div className="flex items-center mb-2">
-          <input
+          <Checkbox
             id="featured"
-            name="featured"
-            type="checkbox"
             checked={featured}
-            onChange={(e) => onChange('featured', e.target.checked)}
-            className="h-4 w-4 text-terminal-red"
+            onCheckedChange={(checked) => onChange('featured', checked === true)}
+            className="h-4 w-4 text-terminal-red data-[state=checked]:bg-terminal-red data-[state=checked]:text-terminal-black"
           />
           <Label htmlFor="featured" className="text-terminal-white ml-2">
             Featured Post (appears highlighted)

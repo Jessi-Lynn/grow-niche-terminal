@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
+import React, { useState, useEffect } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
@@ -16,9 +16,6 @@ import {
   Link as LinkIcon, 
   Image as ImageIcon, 
   Code, 
-  AlignLeft, 
-  AlignCenter, 
-  AlignRight, 
   Undo, 
   Redo 
 } from 'lucide-react';
@@ -35,10 +32,11 @@ interface RichTextEditorProps {
 }
 
 const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
-  const [linkUrl, setLinkUrl] = React.useState('');
-  const [imageFile, setImageFile] = React.useState<File | null>(null);
-  const [isUploading, setIsUploading] = React.useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [editorContent, setEditorContent] = useState(content);
 
+  // Initialize editor
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -49,21 +47,31 @@ const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
         linkOnPaste: true,
       }),
     ],
-    content: content,
+    content: editorContent,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      const html = editor.getHTML();
+      setEditorContent(html);
+      onChange(html);
     },
   });
+
+  // Update editor content when the prop changes
+  useEffect(() => {
+    if (editor && content !== editorContent) {
+      editor.commands.setContent(content);
+      setEditorContent(content);
+    }
+  }, [content, editor]);
 
   const handleImageUpload = async (file: File) => {
     try {
       setIsUploading(true);
       
       const fileExt = file.name.split('.').pop();
-      const fileName = `${slug}-content-${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const fileName = `${slug}-content-${Date.now()}.${fileExt}`;
       const filePath = `content/${fileName}`;
       
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('blog_images')
         .upload(filePath, file, { upsert: true });
         
@@ -92,7 +100,6 @@ const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
       });
     } finally {
       setIsUploading(false);
-      setImageFile(null);
     }
   };
 
@@ -109,7 +116,6 @@ const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
         return;
       }
       
-      setImageFile(file);
       handleImageUpload(file);
     }
   };
@@ -125,7 +131,7 @@ const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
   };
 
   if (!editor) {
-    return null;
+    return <div className="border border-terminal-white/20 rounded-md p-4 text-terminal-white">Loading editor...</div>;
   }
 
   const toolbar = [
@@ -198,6 +204,7 @@ const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
           <Button
             key={index}
             onClick={item.action}
+            type="button"
             variant="ghost"
             size="sm"
             title={item.title}
@@ -212,6 +219,7 @@ const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
         <Popover>
           <PopoverTrigger asChild>
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               title="Add Link"
@@ -230,6 +238,7 @@ const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
                 className="flex-1 bg-terminal-black border-terminal-white/20 text-terminal-white"
               />
               <Button
+                type="button"
                 onClick={handleSetLink}
                 className="bg-terminal-red hover:bg-terminal-red/80 text-terminal-black"
               >
@@ -241,6 +250,7 @@ const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
         
         <label>
           <Button
+            type="button"
             variant="ghost"
             size="sm"
             title="Insert Image"
@@ -261,7 +271,7 @@ const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
       
       <EditorContent 
         editor={editor} 
-        className="prose prose-invert max-w-none p-4 min-h-[300px] bg-terminal-black text-terminal-white focus:outline-none"
+        className="prose prose-invert max-w-none p-4 min-h-[300px] bg-terminal-black text-terminal-white"
       />
     </div>
   );
