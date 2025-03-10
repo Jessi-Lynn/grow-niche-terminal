@@ -2,7 +2,7 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import Terminal from '@/components/Terminal';
-import { Tool, Download, ExternalLink, Check } from 'lucide-react';
+import { Wrench, Download, ExternalLink, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface ToolItem {
@@ -113,7 +113,7 @@ const Tools = () => {
                 
                 <div className="md:w-1/2">
                   <div className="glass-panel p-8 rounded-md inline-block mb-6">
-                    <Tool size={32} className="text-terminal-red" />
+                    <Wrench size={32} className="text-terminal-red" />
                   </div>
                   
                   <h2 className="text-2xl md:text-3xl font-bold text-terminal-white mb-4">
