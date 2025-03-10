@@ -3,6 +3,7 @@ import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import RichTextEditor from './RichTextEditor';
 
 interface MainFormProps {
   title: string;
@@ -106,15 +107,10 @@ const MainForm = ({
         <Label htmlFor="content" className="text-terminal-white">
           Content *
         </Label>
-        <Textarea
-          id="content"
-          name="content"
-          placeholder="The full content of your blog post"
-          value={content}
-          onChange={(e) => onChange('content', e.target.value)}
-          rows={12}
-          className="bg-terminal-black border-terminal-white/20 text-terminal-white"
-          required
+        <RichTextEditor
+          content={content}
+          onChange={(html) => onChange('content', html)}
+          slug={slug || 'post'}
         />
       </div>
 
