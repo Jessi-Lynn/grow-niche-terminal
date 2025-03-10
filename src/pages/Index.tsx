@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Terminal, Database, Bot } from 'lucide-react';
@@ -55,26 +54,19 @@ const Index = () => {
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold mb-6 text-terminal-white">
-              Automate Your Business with JSON <span className="text-terminal-red">Blueprints</span>
+              Supercharge Your Business with Seamless Workflow <span className="text-terminal-red">Automation Blueprints</span>
             </h1>
             
             <p className="text-terminal-white/70 mb-8 max-w-2xl mx-auto">
               Unlock the power of automation with our curated collection of JSON blueprints. Streamline your workflows, save time, and scale your business effortlessly.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex justify-center">
               <Link
                 to="/blueprints"
                 className="glow-button"
               >
                 Explore Blueprints
-              </Link>
-              
-              <Link
-                to="/contact"
-                className="text-terminal-white hover:text-terminal-red transition-colors duration-300"
-              >
-                Contact Us
               </Link>
             </div>
           </div>
