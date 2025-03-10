@@ -37,4 +37,5 @@ if (!isSupabaseConfigured) {
  * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS meta_description text;
  * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS meta_keywords text;
  * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS og_image text;
+ * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS image text;
  */

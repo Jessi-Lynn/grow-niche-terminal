@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { ChevronLeft, Save, Plus, X } from 'lucide-react';
+import { ChevronLeft, Save, Plus, X, Upload, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
 
@@ -24,6 +23,7 @@ interface BlogPost {
   meta_description?: string;
   meta_keywords?: string;
   og_image?: string;
+  image?: string;
 }
 
 interface BlogPostFormProps {
@@ -36,6 +36,10 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
   const [formData, setFormData] = useState<BlogPost>(post);
   const [saving, setSaving] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  const [ogImageFile, setOgImageFile] = useState<File | null>(null);
+  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingOgImage, setUploadingOgImage] = useState(false);
   const isNewPost = !post.id;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -55,12 +59,10 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
       setFormData({ ...formData, slug });
     }
     
-    // Auto-fill meta title from regular title if not already set
     if (name === 'title' && isNewPost && !formData.meta_title) {
       setFormData(prev => ({ ...prev, meta_title: value }));
     }
     
-    // Auto-fill meta description from excerpt if not already set
     if (name === 'excerpt' && isNewPost && !formData.meta_description) {
       setFormData(prev => ({ ...prev, meta_description: value }));
     }
@@ -81,6 +83,67 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
     return true;
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'main' | 'og') => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      
+      if (!file.type.match(/image\/jpe?g/i)) {
+        toast({
+          title: 'Invalid file type',
+          description: 'Please upload a JPEG image file.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      if (type === 'main') {
+        setMainImageFile(file);
+      } else {
+        setOgImageFile(file);
+      }
+    }
+  };
+
+  const uploadImage = async (file: File, type: 'main' | 'og'): Promise<string | null> => {
+    try {
+      if (type === 'main') {
+        setUploadingImage(true);
+      } else {
+        setUploadingOgImage(true);
+      }
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `${formData.slug || 'post'}-${fileName}`;
+      
+      const { error: uploadError, data } = await supabase.storage
+        .from('blog_images')
+        .upload(filePath, file);
+        
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('blog_images')
+        .getPublicUrl(filePath);
+        
+      return publicUrl;
+    } catch (error) {
+      console.error(`Error uploading ${type} image:`, error);
+      toast({
+        title: 'Upload Error',
+        description: `Failed to upload ${type === 'main' ? 'main' : 'OG'} image.`,
+        variant: 'destructive',
+      });
+      return null;
+    } finally {
+      if (type === 'main') {
+        setUploadingImage(false);
+      } else {
+        setUploadingOgImage(false);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -89,22 +152,36 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
     try {
       setSaving(true);
       
+      let updatedData = { ...formData };
+      
+      if (mainImageFile) {
+        const mainImageUrl = await uploadImage(mainImageFile, 'main');
+        if (mainImageUrl) {
+          updatedData.image = mainImageUrl;
+        }
+      }
+      
+      if (ogImageFile) {
+        const ogImageUrl = await uploadImage(ogImageFile, 'og');
+        if (ogImageUrl) {
+          updatedData.og_image = ogImageUrl;
+        }
+      }
+      
       const postData = {
-        ...formData,
-        date: formData.date || new Date().toISOString(),
-        tags: formData.tags.filter(tag => tag.trim() !== '')
+        ...updatedData,
+        date: updatedData.date || new Date().toISOString(),
+        tags: updatedData.tags.filter(tag => tag.trim() !== '')
       };
       
       let result;
       
       if (isNewPost) {
-        // Insert new post
         result = await supabase
           .from('blog_posts')
           .insert(postData)
           .select();
       } else {
-        // Update existing post
         result = await supabase
           .from('blog_posts')
           .update(postData)
@@ -160,6 +237,35 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
     }
   };
 
+  const ImagePreview = ({ url, type }: { url: string | undefined, type: 'main' | 'og' }) => {
+    if (!url) return null;
+    
+    return (
+      <div className="mt-2 relative">
+        <img 
+          src={url} 
+          alt={type === 'main' ? "Main article image" : "OG image preview"} 
+          className="rounded-md max-h-40 object-cover border border-terminal-white/20" 
+        />
+        <button
+          type="button"
+          onClick={() => {
+            if (type === 'main') {
+              setFormData({ ...formData, image: undefined });
+              setMainImageFile(null);
+            } else {
+              setFormData({ ...formData, og_image: undefined });
+              setOgImageFile(null);
+            }
+          }}
+          className="absolute top-2 right-2 bg-terminal-black/70 p-1 rounded-full hover:bg-terminal-red/70"
+        >
+          <X size={16} className="text-terminal-white" />
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div className="glass-panel p-6 rounded-md">
       <div className="flex items-center mb-4">
@@ -178,6 +284,49 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-terminal-white">Main Article Image</h2>
+          <div className="border-2 border-dashed border-terminal-red/30 rounded-md p-6">
+            {formData.image || mainImageFile ? (
+              <div className="space-y-3">
+                <ImagePreview url={mainImageFile ? URL.createObjectURL(mainImageFile) : formData.image} type="main" />
+                
+                <label className="flex items-center justify-center cursor-pointer text-terminal-red hover:text-terminal-red/80">
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/jpeg,image/jpg"
+                    onChange={(e) => handleFileChange(e, 'main')} 
+                  />
+                  <span className="flex items-center">
+                    <Upload size={14} className="mr-1" /> Change image
+                  </span>
+                </label>
+              </div>
+            ) : (
+              <label className="cursor-pointer block w-full text-center">
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  accept="image/jpeg,image/jpg"
+                  onChange={(e) => handleFileChange(e, 'main')} 
+                />
+                <div className="space-y-2">
+                  <ImageIcon className="mx-auto h-12 w-12 text-terminal-red" />
+                  <p className="text-terminal-white">
+                    Drag & drop your JPEG image here or <span className="text-terminal-red underline">browse</span>
+                  </p>
+                  <p className="text-xs text-terminal-white/70">
+                    This image will be displayed at the top of your blog post
+                  </p>
+                </div>
+              </label>
+            )}
+          </div>
+        </div>
+        
+        <Separator className="bg-terminal-white/10" />
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label htmlFor="title" className="text-terminal-white">
@@ -289,7 +438,6 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
         
         <Separator className="bg-terminal-white/10" />
         
-        {/* SEO Meta Information Section */}
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-terminal-white">SEO Meta Information</h2>
           <p className="text-sm text-terminal-white/70">
@@ -323,16 +471,43 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
             
             <div className="space-y-2">
               <Label htmlFor="og_image" className="text-terminal-white">
-                OG Image URL <span className="text-terminal-white/70 text-xs">(Social sharing image)</span>
+                OG Image <span className="text-terminal-white/70 text-xs">(Social sharing image)</span>
               </Label>
-              <Input
-                id="og_image"
-                name="og_image"
-                placeholder="https://example.com/image.jpg"
-                value={formData.og_image || ''}
-                onChange={handleInputChange}
-                className="bg-terminal-black border-terminal-white/20 text-terminal-white"
-              />
+              
+              <div className="border-2 border-dashed border-terminal-white/20 rounded-md p-4">
+                {formData.og_image || ogImageFile ? (
+                  <div className="space-y-3">
+                    <ImagePreview url={ogImageFile ? URL.createObjectURL(ogImageFile) : formData.og_image} type="og" />
+                    
+                    <label className="flex items-center justify-center cursor-pointer text-terminal-white hover:text-terminal-red">
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/jpeg,image/jpg"
+                        onChange={(e) => handleFileChange(e, 'og')} 
+                      />
+                      <span className="flex items-center text-sm">
+                        <Upload size={14} className="mr-1" /> Change OG image
+                      </span>
+                    </label>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer block w-full text-center">
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/jpeg,image/jpg"
+                      onChange={(e) => handleFileChange(e, 'og')} 
+                    />
+                    <div className="space-y-2">
+                      <Upload className="mx-auto h-8 w-8 text-terminal-white/60" />
+                      <p className="text-sm text-terminal-white">
+                        Upload JPEG image for social sharing
+                      </p>
+                    </div>
+                  </label>
+                )}
+              </div>
             </div>
             
             <div className="space-y-2 md:col-span-2">
@@ -435,10 +610,10 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
           </Button>
           <Button 
             type="submit" 
-            disabled={saving}
+            disabled={saving || uploadingImage || uploadingOgImage}
             className="bg-terminal-red hover:bg-terminal-red/80 text-terminal-black"
           >
-            {saving ? 'Saving...' : (
+            {saving || uploadingImage || uploadingOgImage ? 'Saving...' : (
               <>
                 <Save size={16} className="mr-2" /> {isNewPost ? 'Create Post' : 'Update Post'}
               </>
