@@ -1,5 +1,4 @@
-
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import Terminal from '@/components/Terminal';
@@ -7,10 +6,116 @@ import { useBlueprint } from '@/hooks/use-blueprint';
 import { FileJson, Download, Database, Cloud, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { supabase } from '@/lib/supabase';
+import { useEffect, useState } from 'react';
+import { toast } from '@/components/ui/use-toast';
 
 const BlueprintDetails = () => {
   const { slug } = useParams<{ slug: string }>();
-  const { blueprint, isLoading, error, handleDownload } = useBlueprint(slug || '');
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('session_id');
+  const { blueprint, isLoading, error } = useBlueprint(slug || '');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    const verifyPayment = async () => {
+      if (!sessionId) return;
+
+      try {
+        setIsProcessing(true);
+        const { data, error } = await supabase.functions.invoke('verify-payment', {
+          body: { sessionId }
+        });
+
+        if (error) throw error;
+
+        if (data.verified) {
+          toast({
+            title: "Payment successful!",
+            description: "You can now download the blueprint.",
+          });
+          handleDownload();
+        }
+      } catch (err) {
+        console.error('Payment verification error:', err);
+        toast({
+          title: "Payment verification failed",
+          description: "Please contact support if you've completed the payment.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    verifyPayment();
+  }, [sessionId]);
+
+  const handlePayment = async () => {
+    if (!blueprint) return;
+    
+    try {
+      setIsProcessing(true);
+      const { data, error } = await supabase.functions.invoke('create-payment', {
+        body: { 
+          blueprintId: blueprint.id,
+          price: blueprint.price,
+          title: blueprint.title
+        }
+      });
+
+      if (error) throw error;
+
+      window.location.href = data.url;
+    } catch (err) {
+      console.error('Payment creation error:', err);
+      toast({
+        title: "Payment setup failed",
+        description: "Unable to initiate payment. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!blueprint) return;
+    
+    try {
+      setIsProcessing(true);
+      
+      const { data, error } = await supabase.storage
+        .from('blueprints')
+        .download(blueprint.file_path || '');
+      
+      if (error) throw error;
+      
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = blueprint.file_path?.split('/').pop() || `${blueprint.slug}.json`;
+      document.body.appendChild(a);
+      a.click();
+      
+      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Download started",
+        description: "Your blueprint download has started.",
+      });
+    } catch (err) {
+      console.error('Download error:', err);
+      toast({
+        title: "Download failed",
+        description: "There was an error downloading your blueprint",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -110,10 +215,19 @@ const BlueprintDetails = () => {
                   
                   <Button 
                     className="w-full mb-4 bg-terminal-red hover:bg-terminal-red/80 text-terminal-white flex items-center justify-center gap-2"
-                    onClick={handleDownload}
+                    onClick={sessionId ? handleDownload : handlePayment}
+                    disabled={isProcessing}
                   >
-                    <Download size={16} />
-                    Download Blueprint
+                    {isProcessing ? (
+                      "Processing..."
+                    ) : sessionId ? (
+                      <>
+                        <Download size={16} />
+                        Download Blueprint
+                      </>
+                    ) : (
+                      "Purchase Blueprint"
+                    )}
                   </Button>
                   
                   <Separator className="my-4 bg-terminal-gray/30" />
