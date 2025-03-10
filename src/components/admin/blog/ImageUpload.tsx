@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase';
+import { supabase, ensureStorageBuckets } from '@/lib/supabase';
 
 interface ImageUploadProps {
   imageUrl?: string;
@@ -39,19 +39,8 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
       setUploadingImage(true);
       console.log(`Starting ${type} image upload process...`);
       
-      // Check if the blog_images bucket exists, create if not
-      try {
-        const { data: buckets } = await supabase.storage.listBuckets();
-        const blogImagesBucket = buckets?.find(bucket => bucket.name === 'blog_images');
-        if (!blogImagesBucket) {
-          console.log('Creating blog_images bucket...');
-          await supabase.storage.createBucket('blog_images', {
-            public: true
-          });
-        }
-      } catch (bucketError: any) {
-        console.error('Error checking/creating blog_images bucket:', bucketError);
-      }
+      // Ensure the blog_images bucket exists
+      await ensureStorageBuckets();
       
       const fileExt = file.name.split('.').pop();
       const fileName = `${slug}-${type}-${Date.now()}.${fileExt}`;

@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured, ensureStorageBuckets } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Save, AlertTriangle } from 'lucide-react';
@@ -53,6 +52,7 @@ const Admin = () => {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
+  const [bucketsInitialized, setBucketsInitialized] = useState(false);
   
   const [formData, setFormData] = useState<BlueprintFormData>({
     title: '',
@@ -75,36 +75,18 @@ const Admin = () => {
   ];
 
   useEffect(() => {
-    // Check if Supabase is properly configured and create storage buckets if needed
-    const initializeSupabase = async () => {
+    // Initialize Supabase storage buckets
+    const initStorage = async () => {
       if (isSupabaseConfigured) {
-        try {
-          // Check if blog_images bucket exists, create if it doesn't
-          const { data: buckets } = await supabase.storage.listBuckets();
-          const blogImagesBucket = buckets?.find(bucket => bucket.name === 'blog_images');
-          
-          if (!blogImagesBucket) {
-            console.log('Creating blog_images bucket...');
-            await supabase.storage.createBucket('blog_images', {
-              public: true
-            });
-          }
-          
-          // Check if blueprints bucket exists, create if it doesn't
-          const blueprintsBucket = buckets?.find(bucket => bucket.name === 'blueprints');
-          if (!blueprintsBucket) {
-            console.log('Creating blueprints bucket...');
-            await supabase.storage.createBucket('blueprints', {
-              public: true
-            });
-          }
-        } catch (error) {
-          console.error('Error initializing Supabase storage:', error);
+        const result = await ensureStorageBuckets();
+        setBucketsInitialized(result);
+        if (result) {
+          console.log('Storage buckets initialized successfully');
         }
       }
     };
     
-    initializeSupabase();
+    initStorage();
     
     if (isSupabaseConfigured && activeTab === 'blog') {
       fetchBlogPosts();
@@ -281,25 +263,14 @@ const Admin = () => {
       setUploading(true);
       console.log('Starting blueprint upload process...');
       
+      // Ensure storage buckets exist
+      await ensureStorageBuckets();
+      
       const fileExt = file!.name.split('.').pop();
       const fileName = `${formData.slug}-${Date.now()}.${fileExt}`;
       const filePath = `${formData.slug}/${fileName}`;
       
       console.log(`Uploading blueprint file to path: ${filePath}`);
-      
-      // Create a bucket if it doesn't exist
-      try {
-        const { data: buckets } = await supabase.storage.listBuckets();
-        const blueprintsBucket = buckets?.find(bucket => bucket.name === 'blueprints');
-        if (!blueprintsBucket) {
-          console.log('Creating blueprints bucket...');
-          await supabase.storage.createBucket('blueprints', {
-            public: true
-          });
-        }
-      } catch (error) {
-        console.error('Error checking/creating blueprints bucket:', error);
-      }
       
       // Upload the file
       const { error: uploadError } = await supabase.storage

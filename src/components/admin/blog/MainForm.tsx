@@ -83,7 +83,7 @@ const MainForm = ({
           name="read_time"
           placeholder="5 min read"
           value={readTime}
-          onChange={(e) => onChange('read_time', e.target.value)}
+          onChange={(e) => onChange('readTime', e.target.value)}
           className="bg-terminal-black border-terminal-white/20 text-terminal-white"
         />
       </div>
