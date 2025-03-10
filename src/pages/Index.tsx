@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Terminal, Database, Bot } from 'lucide-react';
@@ -52,38 +53,36 @@ const Index = () => {
       {/* Hero Section */}
       <section className="pt-32 pb-16 px-4">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-6 text-terminal-white">
-                Automate Your Business with JSON <span className="text-terminal-red">Blueprints</span>
-              </h1>
-              
-              <p className="text-terminal-white/70 mb-8">
-                Unlock the power of automation with our curated collection of JSON blueprints. Streamline your workflows, save time, and scale your business effortlessly.
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link
-                  to="/blueprints"
-                  className="glow-button"
-                >
-                  Explore Blueprints
-                </Link>
-                
-                <Link
-                  to="/contact"
-                  className="text-terminal-white hover:text-terminal-red transition-colors duration-300"
-                >
-                  Contact Us
-                </Link>
-              </div>
-            </div>
+          <div className="text-center mb-12">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-terminal-white">
+              Automate Your Business with JSON <span className="text-terminal-red">Blueprints</span>
+            </h1>
             
-            <div>
-              <TerminalComponent title="terminal@growyourniche: ~">
-                <TypingEffect text="npm install @growyourniche/automation" speed={50} delay={500} cursor />
-              </TerminalComponent>
+            <p className="text-terminal-white/70 mb-8 max-w-2xl mx-auto">
+              Unlock the power of automation with our curated collection of JSON blueprints. Streamline your workflows, save time, and scale your business effortlessly.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                to="/blueprints"
+                className="glow-button"
+              >
+                Explore Blueprints
+              </Link>
+              
+              <Link
+                to="/contact"
+                className="text-terminal-white hover:text-terminal-red transition-colors duration-300"
+              >
+                Contact Us
+              </Link>
             </div>
+          </div>
+          
+          <div className="max-w-3xl mx-auto">
+            <TerminalComponent title="terminal@growyourniche: ~">
+              <TypingEffect text="Welcome to GrowYourNiche - Let's build together." speed={50} delay={500} cursor />
+            </TerminalComponent>
           </div>
         </div>
       </section>
@@ -107,7 +106,7 @@ const Index = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredBlueprints.map(blueprint => (
               <BlueprintCard
-                key={blueprint.id} // Use blueprint.id as the key, but don't pass it as a prop
+                key={blueprint.id}
                 id={blueprint.id}
                 title={blueprint.title}
                 description={blueprint.description}
