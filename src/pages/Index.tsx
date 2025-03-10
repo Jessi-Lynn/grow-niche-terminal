@@ -49,6 +49,8 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, []);
   
+  const welcomeMessage = "Welcome to GrowYourNiche - Your automation journey begins here.\nLet's build something great together.";
+  
   return (
     <div className="min-h-screen bg-terminal-black">
       <Navbar />
@@ -79,7 +81,7 @@ const Index = () => {
           
           <div className="mt-12 animate-fadeIn opacity-0" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
             <Terminal fullWidth title="terminal@growyourniche: ~/automate" autoType>
-              {`Welcome to GrowYourNiche - Your automation journey begins here.\nLet's build something great together.`}
+              {welcomeMessage}
             </Terminal>
           </div>
         </div>
