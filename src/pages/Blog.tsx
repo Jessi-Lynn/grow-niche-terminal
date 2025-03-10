@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -27,6 +28,7 @@ const Blog = () => {
   const [blogPosts, setBlogPosts] = useState<BlogPostData[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [featuredPost, setFeaturedPost] = useState<BlogPostData | null>(null);
   
   useEffect(() => {
     fetchBlogPosts();
@@ -43,6 +45,10 @@ const Blog = () => {
       if (error) throw error;
       
       setBlogPosts(data || []);
+      
+      // Find the featured post
+      const featured = data?.find(post => post.featured) || null;
+      setFeaturedPost(featured);
       
       const tags = [...new Set(data?.flatMap(post => post.tags) || [])];
       setAllTags(tags);
