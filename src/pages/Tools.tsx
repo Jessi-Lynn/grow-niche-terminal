@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 const tools: ToolItem[] = [
   {
     id: '1',
-    name: 'Workflow Analyzer',
+    name: 'Process Optimization Suite',
     description: 'A powerful tool for analyzing your existing workflows and identifying automation opportunities.',
     imageUrl: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6',
     features: [
@@ -26,7 +26,7 @@ const tools: ToolItem[] = [
   },
   {
     id: '2',
-    name: 'Blueprint Generator',
+    name: 'Automation Designer Pro',
     description: 'Create custom automation blueprints with our easy-to-use blueprint generator.',
     imageUrl: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b',
     features: [
@@ -42,7 +42,7 @@ const tools: ToolItem[] = [
   },
   {
     id: '3',
-    name: 'Process Timer',
+    name: 'Workflow Timer Essential',
     description: 'A simple but effective tool for timing your business processes to identify bottlenecks.',
     imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475',
     features: [
