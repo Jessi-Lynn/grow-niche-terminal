@@ -20,6 +20,10 @@ interface BlogPost {
   read_time: string;
   featured: boolean;
   tags: string[];
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
+  og_image?: string;
 }
 
 interface BlogPostFormProps {
@@ -49,6 +53,16 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
         .replace(/[^\w\s-]/g, '')
         .replace(/\s+/g, '-');
       setFormData({ ...formData, slug });
+    }
+    
+    // Auto-fill meta title from regular title if not already set
+    if (name === 'title' && isNewPost && !formData.meta_title) {
+      setFormData(prev => ({ ...prev, meta_title: value }));
+    }
+    
+    // Auto-fill meta description from excerpt if not already set
+    if (name === 'excerpt' && isNewPost && !formData.meta_description) {
+      setFormData(prev => ({ ...prev, meta_description: value }));
     }
   };
 
@@ -269,6 +283,98 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
               <Label htmlFor="featured" className="text-terminal-white ml-2">
                 Featured Post (appears highlighted)
               </Label>
+            </div>
+          </div>
+        </div>
+        
+        <Separator className="bg-terminal-white/10" />
+        
+        {/* SEO Meta Information Section */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-terminal-white">SEO Meta Information</h2>
+          <p className="text-sm text-terminal-white/70">
+            These fields help improve your post's visibility in search engines.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="meta_title" className="text-terminal-white">
+                Meta Title <span className="text-terminal-white/70 text-xs">(Recommended: 50-60 characters)</span>
+              </Label>
+              <Input
+                id="meta_title"
+                name="meta_title"
+                placeholder="SEO-optimized title for search engines"
+                value={formData.meta_title || ''}
+                onChange={handleInputChange}
+                className="bg-terminal-black border-terminal-white/20 text-terminal-white"
+              />
+              {formData.meta_title && (
+                <p className="text-xs text-terminal-white/70">
+                  Length: {formData.meta_title.length} characters
+                  {formData.meta_title.length > 60 && (
+                    <span className="text-terminal-red ml-1">
+                      (Too long! Try to keep it under 60 characters)
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="og_image" className="text-terminal-white">
+                OG Image URL <span className="text-terminal-white/70 text-xs">(Social sharing image)</span>
+              </Label>
+              <Input
+                id="og_image"
+                name="og_image"
+                placeholder="https://example.com/image.jpg"
+                value={formData.og_image || ''}
+                onChange={handleInputChange}
+                className="bg-terminal-black border-terminal-white/20 text-terminal-white"
+              />
+            </div>
+            
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="meta_description" className="text-terminal-white">
+                Meta Description <span className="text-terminal-white/70 text-xs">(Recommended: 150-160 characters)</span>
+              </Label>
+              <Textarea
+                id="meta_description"
+                name="meta_description"
+                placeholder="Concise description for search engine results"
+                value={formData.meta_description || ''}
+                onChange={handleInputChange}
+                rows={2}
+                className="bg-terminal-black border-terminal-white/20 text-terminal-white"
+              />
+              {formData.meta_description && (
+                <p className="text-xs text-terminal-white/70">
+                  Length: {formData.meta_description.length} characters
+                  {formData.meta_description.length > 160 && (
+                    <span className="text-terminal-red ml-1">
+                      (Too long! Try to keep it under 160 characters)
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+            
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="meta_keywords" className="text-terminal-white">
+                Meta Keywords <span className="text-terminal-white/70 text-xs">(Comma-separated)</span>
+              </Label>
+              <Input
+                id="meta_keywords"
+                name="meta_keywords"
+                placeholder="niche, marketing, growth, automation"
+                value={formData.meta_keywords || ''}
+                onChange={handleInputChange}
+                className="bg-terminal-black border-terminal-white/20 text-terminal-white"
+              />
+              <p className="text-xs text-terminal-white/70">
+                Note: While less important now, keywords can still help with content categorization
+              </p>
             </div>
           </div>
         </div>

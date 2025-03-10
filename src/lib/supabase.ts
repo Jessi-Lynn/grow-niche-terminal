@@ -17,3 +17,12 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseKey);
+
+// Add the SQL command that should be run on the Supabase database:
+/**
+ * -- Add SEO meta fields to blog_posts table
+ * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS meta_title text;
+ * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS meta_description text;
+ * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS meta_keywords text;
+ * ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS og_image text;
+ */
