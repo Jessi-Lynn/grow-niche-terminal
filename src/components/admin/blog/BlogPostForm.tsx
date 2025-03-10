@@ -95,9 +95,12 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
       let result;
       
       if (isNewPost) {
+        // Remove id for new posts to let Supabase generate it
+        const { id, ...newPostData } = postData;
+        
         result = await supabase
           .from('blog_posts')
-          .insert([postData])
+          .insert([newPostData])
           .select()
           .single();
       } else {
@@ -123,11 +126,11 @@ const BlogPostForm = ({ post, onSaved, onCancel }: BlogPostFormProps) => {
       
       onSaved();
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving blog post:', error);
       toast({
         title: 'Error',
-        description: `Failed to ${isNewPost ? 'create' : 'update'} blog post. Please check console for details.`,
+        description: `Failed to ${isNewPost ? 'create' : 'update'} blog post: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {

@@ -20,10 +20,10 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       
-      if (!file.type.match(/image\/jpe?g/i)) {
+      if (!file.type.match(/image\/(jpeg|jpg|png|gif|webp)/i)) {
         toast({
           title: 'Invalid file type',
-          description: 'Please upload a JPEG image file.',
+          description: 'Please upload a valid image file (JPEG, PNG, GIF, WebP).',
           variant: 'destructive',
         });
         return;
@@ -37,17 +37,36 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
   const uploadImage = async (file: File): Promise<void> => {
     try {
       setUploadingImage(true);
+      console.log(`Starting ${type} image upload process...`);
+      
+      // Check if the blog_images bucket exists, create if not
+      try {
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const blogImagesBucket = buckets?.find(bucket => bucket.name === 'blog_images');
+        if (!blogImagesBucket) {
+          console.log('Creating blog_images bucket...');
+          await supabase.storage.createBucket('blog_images', {
+            public: true
+          });
+        }
+      } catch (bucketError: any) {
+        console.error('Error checking/creating blog_images bucket:', bucketError);
+      }
       
       const fileExt = file.name.split('.').pop();
-      const fileName = `${slug}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `${type === 'main' ? 'main' : 'og'}/${fileName}`;
+      const fileName = `${slug}-${type}-${Date.now()}.${fileExt}`;
+      const folderPath = type === 'main' ? 'main' : 'og';
+      const filePath = `${folderPath}/${fileName}`;
       
       console.log(`Uploading ${type} image to path: ${filePath}`);
       
       // Upload the file
       const { error: uploadError, data } = await supabase.storage
         .from('blog_images')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, file, { 
+          upsert: true,
+          contentType: file.type
+        });
         
       if (uploadError) {
         console.error(`Error uploading ${type} image:`, uploadError);
@@ -69,7 +88,7 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
       });
       
       onImageUploaded(publicUrl);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error uploading ${type} image:`, error);
       toast({
         title: 'Upload Error',
@@ -106,7 +125,7 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
           <input 
             type="file" 
             className="hidden" 
-            accept="image/jpeg,image/jpg"
+            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
             onChange={handleFileChange} 
             disabled={uploadingImage}
           />
@@ -125,7 +144,7 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
       <input 
         type="file" 
         className="hidden" 
-        accept="image/jpeg,image/jpg"
+        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
         onChange={handleFileChange} 
         disabled={uploadingImage}
       />
@@ -140,8 +159,8 @@ const ImageUpload = ({ imageUrl, onImageUploaded, onImageRemoved, type, slug }: 
           {uploadingImage ? 'Uploading...' : (
             <>
               {type === 'main' 
-                ? 'Drag & drop your JPEG image here or ' 
-                : 'Upload JPEG image for social sharing'}
+                ? 'Drag & drop your image here or ' 
+                : 'Upload image for social sharing'}
               {type === 'main' && <span className="text-terminal-red underline">browse</span>}
             </>
           )}

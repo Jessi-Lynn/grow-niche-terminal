@@ -34,7 +34,6 @@ interface RichTextEditorProps {
 const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
   const [linkUrl, setLinkUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [editorContent, setEditorContent] = useState(content);
 
   // Initialize editor
   const editor = useEditor({
@@ -47,19 +46,17 @@ const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
         linkOnPaste: true,
       }),
     ],
-    content: editorContent,
+    content: content,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-      setEditorContent(html);
       onChange(html);
     },
   });
 
   // Update editor content when the prop changes
   useEffect(() => {
-    if (editor && content !== editorContent) {
+    if (editor && content) {
       editor.commands.setContent(content);
-      setEditorContent(content);
     }
   }, [content, editor]);
 
@@ -91,11 +88,11 @@ const RichTextEditor = ({ content, onChange, slug }: RichTextEditorProps) => {
         title: 'Image uploaded',
         description: 'Image has been added to the editor',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading image:', error);
       toast({
         title: 'Upload Error',
-        description: 'Failed to upload image. Please try again.',
+        description: `Failed to upload image: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {

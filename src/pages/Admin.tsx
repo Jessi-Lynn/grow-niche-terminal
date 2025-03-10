@@ -38,6 +38,11 @@ interface BlogPost {
   read_time: string;
   featured: boolean;
   tags: string[];
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
+  og_image?: string;
+  image?: string;
 }
 
 const Admin = () => {
@@ -70,6 +75,37 @@ const Admin = () => {
   ];
 
   useEffect(() => {
+    // Check if Supabase is properly configured and create storage buckets if needed
+    const initializeSupabase = async () => {
+      if (isSupabaseConfigured) {
+        try {
+          // Check if blog_images bucket exists, create if it doesn't
+          const { data: buckets } = await supabase.storage.listBuckets();
+          const blogImagesBucket = buckets?.find(bucket => bucket.name === 'blog_images');
+          
+          if (!blogImagesBucket) {
+            console.log('Creating blog_images bucket...');
+            await supabase.storage.createBucket('blog_images', {
+              public: true
+            });
+          }
+          
+          // Check if blueprints bucket exists, create if it doesn't
+          const blueprintsBucket = buckets?.find(bucket => bucket.name === 'blueprints');
+          if (!blueprintsBucket) {
+            console.log('Creating blueprints bucket...');
+            await supabase.storage.createBucket('blueprints', {
+              public: true
+            });
+          }
+        } catch (error) {
+          console.error('Error initializing Supabase storage:', error);
+        }
+      }
+    };
+    
+    initializeSupabase();
+    
     if (isSupabaseConfigured && activeTab === 'blog') {
       fetchBlogPosts();
     }
@@ -78,19 +114,24 @@ const Admin = () => {
   const fetchBlogPosts = async () => {
     try {
       setLoading(true);
+      console.log('Fetching blog posts...');
       const { data, error } = await supabase
         .from('blog_posts')
         .select('*')
         .order('date', { ascending: false });
         
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error fetching blog posts:', error);
+        throw error;
+      }
       
+      console.log('Fetched blog posts:', data);
       setBlogPosts(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching blog posts:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load blog posts',
+        description: `Failed to load blog posts: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {
@@ -134,23 +175,28 @@ const Admin = () => {
     if (!confirm('Are you sure you want to delete this blog post?')) return;
     
     try {
+      console.log('Deleting blog post with ID:', id);
       const { error } = await supabase
         .from('blog_posts')
         .delete()
         .eq('id', id);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error deleting blog post:', error);
+        throw error;
+      }
       
+      console.log('Blog post deleted successfully');
       fetchBlogPosts();
       toast({
         title: 'Success',
         description: 'Blog post deleted successfully',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting blog post:', error);
       toast({
         title: 'Error',
-        description: 'Failed to delete blog post',
+        description: `Failed to delete blog post: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
     }
@@ -178,7 +224,7 @@ const Admin = () => {
       const slug = value.toLowerCase()
         .replace(/[^\w\s-]/g, '')
         .replace(/\s+/g, '-');
-      setFormData({ ...formData, slug });
+      setFormData(prev => ({ ...prev, slug }));
     }
   };
 
@@ -233,42 +279,92 @@ const Admin = () => {
 
     try {
       setUploading(true);
+      console.log('Starting blueprint upload process...');
       
       const fileExt = file!.name.split('.').pop();
-      const filePath = `blueprints/${formData.slug}.${fileExt}`;
+      const fileName = `${formData.slug}-${Date.now()}.${fileExt}`;
+      const filePath = `${formData.slug}/${fileName}`;
       
+      console.log(`Uploading blueprint file to path: ${filePath}`);
+      
+      // Create a bucket if it doesn't exist
+      try {
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const blueprintsBucket = buckets?.find(bucket => bucket.name === 'blueprints');
+        if (!blueprintsBucket) {
+          console.log('Creating blueprints bucket...');
+          await supabase.storage.createBucket('blueprints', {
+            public: true
+          });
+        }
+      } catch (error) {
+        console.error('Error checking/creating blueprints bucket:', error);
+      }
+      
+      // Upload the file
       const { error: uploadError } = await supabase.storage
         .from('blueprints')
         .upload(filePath, file!, {
-          upsert: true
+          upsert: true,
+          contentType: 'application/json'
         });
         
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Error uploading blueprint file:', uploadError);
+        throw uploadError;
+      }
       
-      const { data: blueprint, error: insertError } = await supabase
+      console.log('File uploaded successfully, now saving blueprint data to database');
+      
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('blueprints')
+        .getPublicUrl(filePath);
+      
+      console.log('Public URL for blueprint file:', publicUrl);
+      
+      // Save blueprint data to database
+      const { error: insertError } = await supabase
         .from('blueprints')
         .insert({
           ...formData,
           file_path: filePath,
           requirements: formData.requirements.filter(req => req.trim() !== '')
-        })
-        .select()
-        .single();
+        });
         
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Error inserting blueprint data:', insertError);
+        throw insertError;
+      }
+      
+      console.log('Blueprint saved successfully');
       
       toast({
         title: 'Success!',
         description: 'Blueprint was successfully added',
       });
       
-      navigate(`/blueprints/${blueprint.slug}`);
+      // Reset form
+      setFormData({
+        title: '',
+        description: '',
+        price: 0,
+        category: 'E-commerce',
+        slug: '',
+        details: '',
+        featured: false,
+        requirements: [''],
+      });
+      setFile(null);
       
-    } catch (error) {
+      // Redirect to blueprints page
+      navigate('/blueprints');
+      
+    } catch (error: any) {
       console.error('Error uploading blueprint:', error);
       toast({
         title: 'Upload failed',
-        description: 'There was an error uploading your blueprint',
+        description: `There was an error uploading your blueprint: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {

@@ -18,7 +18,7 @@ export const supabase = createClient(
 );
 
 // Helper to check if proper credentials are configured
-export const isSupabaseConfigured = (
+export const isSupabaseConfigured = Boolean(
   supabaseUrl && supabaseKey &&
   supabaseUrl !== 'https://example.supabase.co' && 
   supabaseKey !== 'your-anon-key'

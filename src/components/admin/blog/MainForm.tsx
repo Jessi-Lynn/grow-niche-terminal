@@ -116,14 +116,17 @@ const MainForm = ({
       </div>
 
       <div className="md:col-span-2">
-        <div className="flex items-center mb-2">
+        <div className="flex items-center space-x-2">
           <Checkbox
             id="featured"
             checked={featured}
             onCheckedChange={(checked) => onChange('featured', checked === true)}
             className="h-4 w-4 text-terminal-red data-[state=checked]:bg-terminal-red data-[state=checked]:text-terminal-black"
           />
-          <Label htmlFor="featured" className="text-terminal-white ml-2">
+          <Label
+            htmlFor="featured"
+            className="text-terminal-white ml-2 cursor-pointer"
+          >
             Featured Post (appears highlighted)
           </Label>
         </div>
