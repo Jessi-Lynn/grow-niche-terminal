@@ -10,7 +10,7 @@ const HeroSection = () => {
       <div className="container mx-auto max-w-6xl">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-6 text-terminal-white">
-            Supercharge Your Business with Seamless Workflow <span className="text-terminal-red">Automation Blueprints</span>
+            Supercharge Your Business with <span className="text-terminal-red">Automation Workflows</span>
           </h1>
           
           <p className="text-terminal-white/70 mb-8 max-w-2xl mx-auto">
