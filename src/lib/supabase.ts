@@ -13,6 +13,8 @@ export const supabase = createClient(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      storageKey: 'growyourniche_auth_token',
+      debug: true,
     }
   }
 );

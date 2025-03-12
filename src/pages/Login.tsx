@@ -41,9 +41,8 @@ const Login = () => {
       // Extract detailed error information
       const errorMessage = error.message || 'Failed to log in';
       const errorCode = error.code || '';
-      const errorDetails = error.details || '';
       
-      setErrorDetails(`${errorMessage}${errorDetails ? `\nDetails: ${errorDetails}` : ''}`);
+      setErrorDetails(`${errorMessage} (Code: ${errorCode})`);
       
       toast({
         title: 'Authentication Error',
