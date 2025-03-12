@@ -1,8 +1,12 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileJson, ArrowRight } from 'lucide-react';
+import { FileJson, ArrowRight, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
+import { toast } from '@/components/ui/use-toast';
 
 interface BlueprintCardProps {
   id: string;
@@ -12,6 +16,7 @@ interface BlueprintCardProps {
   category: string;
   slug: string;
   featured?: boolean;
+  onDelete?: () => void;
 }
 
 const BlueprintCard = ({
@@ -21,19 +26,65 @@ const BlueprintCard = ({
   price,
   category,
   slug,
-  featured = false
+  featured = false,
+  onDelete
 }: BlueprintCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { isAdmin } = useAuth();
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this blueprint?')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('blueprints')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Blueprint deleted successfully',
+      });
+      
+      onDelete?.();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete blueprint',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div 
       className={cn(
-        "blueprint-card group",
+        "blueprint-card group relative",
         featured && "border-terminal-red terminal-shadow",
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {isAdmin && (
+        <Button
+          variant="destructive"
+          size="icon"
+          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={handleDelete}
+          disabled={isDeleting}
+        >
+          <Trash2 size={16} />
+        </Button>
+      )}
+      
       <div className="p-6 flex flex-col h-full">
         <div className="flex justify-between items-start mb-4">
           <div className="flex items-center">
