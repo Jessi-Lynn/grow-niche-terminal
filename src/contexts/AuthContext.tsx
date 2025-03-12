@@ -25,14 +25,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      checkAdminStatus(session?.user?.id);
+      if (session?.user) {
+        checkAdminStatus(session.user.id);
+      } else {
+        setIsLoading(false);
+      }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("Auth state changed:", _event, session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
-      checkAdminStatus(session?.user?.id);
+      if (session?.user) {
+        checkAdminStatus(session.user.id);
+      } else {
+        setIsAdmin(false);
+        setIsLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -41,18 +51,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAdminStatus = async (userId: string | undefined) => {
     if (!userId) {
       setIsAdmin(false);
+      setIsLoading(false);
       return;
     }
 
     try {
+      console.log("Checking admin status for user ID:", userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
-      setIsAdmin(data.role === 'admin');
+      if (error) {
+        console.error('Error checking admin status:', error);
+        throw error;
+      }
+      
+      console.log("Admin check result:", data);
+      setIsAdmin(data?.role === 'admin');
     } catch (error) {
       console.error('Error checking admin status:', error);
       setIsAdmin(false);
@@ -62,11 +79,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    if (error) throw error;
+    console.log("Attempting to sign in user:", email);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error("Sign in error:", error);
+        throw error;
+      }
+      
+      console.log("Sign in successful:", data);
+      return data;
+    } catch (error) {
+      console.error("Sign in exception:", error);
+      throw error;
+    }
   };
 
   const signOut = async () => {

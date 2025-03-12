@@ -11,14 +11,22 @@ import Footer from '@/components/Footer';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signIn, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
+
+  // If user is already logged in, redirect to admin
+  if (user) {
+    navigate('/admin');
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorDetails(null);
 
     try {
       await signIn(email, password);
@@ -28,9 +36,18 @@ const Login = () => {
       });
       navigate('/admin');
     } catch (error: any) {
+      console.error('Login error:', error);
+      
+      // Extract detailed error information
+      const errorMessage = error.message || 'Failed to log in';
+      const errorCode = error.code || '';
+      const errorDetails = error.details || '';
+      
+      setErrorDetails(`${errorMessage}${errorDetails ? `\nDetails: ${errorDetails}` : ''}`);
+      
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to log in',
+        title: 'Authentication Error',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -71,6 +88,12 @@ const Login = () => {
                   required
                 />
               </div>
+
+              {errorDetails && (
+                <div className="bg-red-500/20 border border-red-500/50 p-3 rounded text-sm text-white break-words">
+                  <p className="font-mono">Error: {errorDetails}</p>
+                </div>
+              )}
 
               <Button 
                 type="submit" 
