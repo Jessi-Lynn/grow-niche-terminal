@@ -43,7 +43,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted && data.session) {
           setSession(data.session);
           setUser(data.session.user);
-          console.log('User authenticated:', data.session.user?.email);
           
           if (data.session.user) {
             await checkAdminStatus(data.session.user.id);
@@ -88,12 +87,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const checkAdminStatus = async (userId: string) => {
-    if (!userId) {
-      console.log('No user ID provided for admin check');
-      setIsAdmin(false);
-      return;
-    }
-
     try {
       console.log('Checking admin status for user ID:', userId);
       
@@ -113,11 +106,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const isUserAdmin = data?.role === 'admin';
       console.log(`User admin status: ${isUserAdmin ? 'ADMIN' : 'NOT ADMIN'}`);
       setIsAdmin(isUserAdmin);
-      
-      // Debugging
-      if (!isUserAdmin && data) {
-        console.warn(`User has role "${data.role}" instead of "admin"`);
-      }
     } catch (error) {
       console.error('Exception in admin status check:', error);
       setIsAdmin(false);
@@ -128,22 +116,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Attempting sign in for user:", email);
       
-      // First try to sign up the user if they don't exist yet (for test/demo purposes)
-      if (email === 'admin@test.com' && password === 'password123') {
-        const { data: checkData, error: checkError } = await supabase.auth.signInWithPassword({
-          email, password
-        });
+      // First, try to sign in
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email, password
+      });
+      
+      if (error) {
+        console.log("Sign in failed, attempting to create admin user:", error.message);
         
-        if (checkError && checkError.message.includes('Invalid login')) {
-          console.log('Admin user does not exist, creating...');
-          
-          // Try to create the admin user if login fails
+        // Only try to create the admin user if credentials match our expected admin
+        if (email === 'admin@test.com' && password === 'password123') {
+          // Try to create the admin user
           const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
             email, password
           });
           
           if (signUpError) {
-            console.error("Sign up error:", signUpError);
+            console.error("Admin signup error:", signUpError);
+            toast({
+              title: "Error",
+              description: signUpError.message,
+              variant: "destructive"
+            });
             throw signUpError;
           }
           
@@ -151,31 +145,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log("Admin user created successfully:", signUpData.user.email);
             
             // Set admin role in profiles table
-            const { error: updateError } = await supabase
+            const { error: insertError } = await supabase
               .from('profiles')
-              .update({ role: 'admin' })
-              .eq('id', signUpData.user.id);
+              .insert({
+                id: signUpData.user.id,
+                email: signUpData.user.email,
+                role: 'admin'
+              });
               
-            if (updateError) {
-              console.error("Error setting admin role:", updateError);
+            if (insertError) {
+              console.error("Error setting admin role:", insertError);
+              toast({
+                title: "Warning",
+                description: "User created but role setting failed. Please try again.",
+                variant: "destructive"
+              });
             }
+            
+            // Try signing in again after creating the user
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email, password
+            });
+            
+            if (signInError) {
+              console.error("Sign in after creation error:", signInError);
+              throw signInError;
+            }
+            
+            setSession(signInData.session);
+            setUser(signInData.user);
+            
+            if (signInData.user) {
+              await checkAdminStatus(signInData.user.id);
+            }
+            
+            toast({
+              title: "Success",
+              description: "Admin user created and logged in!",
+            });
+            
+            return;
           }
+        } else {
+          // Not trying to create admin user, just throw the original error
+          toast({
+            title: "Authentication Error",
+            description: error.message,
+            variant: "destructive"
+          });
+          throw error;
         }
       }
       
-      // Now proceed with normal sign in
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) {
-        console.error("Sign in error:", error);
-        throw error;
-      }
-      
       console.log("Sign in successful for:", data.user?.email);
-      console.log("Session:", data.session);
+      
+      setSession(data.session);
+      setUser(data.user);
       
       toast({
         title: "Login successful",
@@ -197,7 +222,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error("Sign out error:", error);
         throw error;
       }
       
@@ -205,8 +229,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       setUser(null);
       setIsAdmin(false);
-      
-      console.log("User signed out successfully");
       
       toast({
         title: "Signed out",
