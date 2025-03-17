@@ -21,39 +21,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Initial session check
-    const fetchInitialSession = async () => {
+    // Get initial session
+    const fetchSession = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
+        setIsLoading(true);
+        
+        // Get the current session
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Error fetching initial session:', error);
-          setIsLoading(false);
+          console.error('Error fetching session:', error);
           return;
         }
         
-        if (data.session) {
-          setSession(data.session);
-          setUser(data.session.user);
+        if (currentSession) {
+          setSession(currentSession);
+          setUser(currentSession.user);
           
-          if (data.session.user) {
-            await checkAdminStatus(data.session.user.id);
-          } else {
-            setIsLoading(false);
+          // Check admin status
+          if (currentSession.user) {
+            await checkAdminStatus(currentSession.user.id);
           }
-        } else {
-          setIsLoading(false);
         }
       } catch (error) {
-        console.error('Unexpected error during auth initialization:', error);
+        console.error('Session fetch error:', error);
+      } finally {
         setIsLoading(false);
       }
     };
-    
-    // Run the initial session check
-    fetchInitialSession();
-    
-    // Set up the auth state change listener
+
+    fetchSession();
+
+    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         console.log(`Auth state changed: ${event}`, currentSession?.user?.email);
@@ -65,12 +64,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await checkAdminStatus(currentSession.user.id);
         } else {
           setIsAdmin(false);
-          setIsLoading(false);
         }
       }
     );
     
-    // Clean up the subscription when the component unmounts
     return () => {
       subscription.unsubscribe();
     };
@@ -79,7 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAdminStatus = async (userId: string | undefined) => {
     if (!userId) {
       setIsAdmin(false);
-      setIsLoading(false);
       return;
     }
 
@@ -101,13 +97,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error checking admin status:', error);
       setIsAdmin(false);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const signIn = async (email: string, password: string): Promise<void> => {
-    console.log("Attempting to sign in user:", email);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,

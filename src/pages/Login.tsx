@@ -42,7 +42,7 @@ const Login = () => {
         description: 'Logged in successfully',
       });
       
-      // Navigate is now handled by the useEffect
+      // Navigate is handled by the useEffect
     } catch (error: any) {
       console.error('Login error:', error);
       
@@ -50,7 +50,11 @@ const Login = () => {
       let errorMessage = 'Failed to log in';
       
       if (error.message) {
-        errorMessage = error.message;
+        if (error.message.includes('confirmation_token')) {
+          errorMessage = 'Authentication system error. Please contact support.';
+        } else {
+          errorMessage = error.message;
+        }
       }
       
       // Format error code if available

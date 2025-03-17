@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { supabase as supabaseIntegration } from '@/integrations/supabase/client';
 
-// Use the Supabase integration client instead of creating a new one
+// Use the Supabase integration client directly
 export const supabase = supabaseIntegration;
 
 // Helper to check if proper credentials are configured
