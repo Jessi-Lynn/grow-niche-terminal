@@ -49,16 +49,21 @@ const Login = () => {
       // Extract detailed error information
       let errorMessage = 'Failed to log in';
       
+      // Handle specific error cases
       if (error.message) {
         if (error.message.includes('confirmation_token')) {
-          errorMessage = 'Authentication system error. Please contact support.';
+          errorMessage = 'Authentication system error. There appears to be an issue with the Supabase configuration. Please contact support.';
+        } else if (error.message.includes('Invalid login')) {
+          errorMessage = 'Invalid email or password';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Please confirm your email before logging in';
         } else {
           errorMessage = error.message;
         }
       }
       
       // Format error code if available
-      const errorCode = error.code || '';
+      const errorCode = error.code || error.status || '';
       const displayError = errorCode ? `${errorMessage} (Code: ${errorCode})` : errorMessage;
       
       setErrorDetails(displayError);
