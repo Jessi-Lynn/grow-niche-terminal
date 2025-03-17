@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         setIsLoading(true);
         
-        // Fetch the session using the getSession method
+        // Get the current session
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string): Promise<void> => {
     try {
-      console.log("Signing in user:", email);
+      console.log("Attempting sign in for user:", email);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -125,7 +125,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       console.log("Sign in successful for:", data.user?.email);
-    } catch (error) {
+      
+      // Update admin status after successful login
+      if (data.user) {
+        await checkAdminStatus(data.user.id);
+      }
+    } catch (error: any) {
       console.error("Sign in exception:", error);
       throw error;
     }
@@ -139,6 +144,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error("Sign out error:", error);
         throw error;
       }
+      
+      // Reset states after sign out
+      setSession(null);
+      setUser(null);
+      setIsAdmin(false);
       
       console.log("User signed out successfully");
     } catch (error) {

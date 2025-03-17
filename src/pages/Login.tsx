@@ -52,7 +52,7 @@ const Login = () => {
       // Handle specific error cases
       if (error.message) {
         if (error.message.includes('confirmation_token')) {
-          errorMessage = 'This appears to be a Supabase database schema issue. Please check the Supabase project settings and auth configuration.';
+          errorMessage = 'This appears to be a Supabase database schema issue. Please make sure your Supabase project is properly set up with the auth schema and RLS policies.';
         } else if (error.message.includes('Invalid login')) {
           errorMessage = 'Invalid email or password';
         } else if (error.message.includes('Email not confirmed')) {
@@ -82,7 +82,7 @@ const Login = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-        <p className="text-terminal-white">Loading...</p>
+        <p className="text-terminal-white">Loading authentication status...</p>
       </div>
     );
   }
