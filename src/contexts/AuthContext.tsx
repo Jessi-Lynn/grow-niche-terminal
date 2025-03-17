@@ -21,15 +21,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        console.log("Auth state changed:", _event, session?.user?.email);
-        setSession(session);
-        setUser(session?.user ?? null);
+    // Initial session check
+    const fetchInitialSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
         
-        if (session?.user) {
-          await checkAdminStatus(session.user.id);
+        if (error) {
+          console.error('Error fetching initial session:', error);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (data.session) {
+          setSession(data.session);
+          setUser(data.session.user);
+          
+          if (data.session.user) {
+            await checkAdminStatus(data.session.user.id);
+          } else {
+            setIsLoading(false);
+          }
+        } else {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Unexpected error during auth initialization:', error);
+        setIsLoading(false);
+      }
+    };
+    
+    // Run the initial session check
+    fetchInitialSession();
+    
+    // Set up the auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        console.log(`Auth state changed: ${event}`, currentSession?.user?.email);
+        
+        setSession(currentSession);
+        setUser(currentSession?.user || null);
+        
+        if (currentSession?.user) {
+          await checkAdminStatus(currentSession.user.id);
         } else {
           setIsAdmin(false);
           setIsLoading(false);
@@ -37,33 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
     
-    // Get initial session
-    const initializeAuth = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Error getting session:", error);
-          setIsLoading(false);
-          return;
-        }
-        
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
-        
-        if (data.session?.user) {
-          await checkAdminStatus(data.session.user.id);
-        } else {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Error initializing auth:", error);
-        setIsLoading(false);
-      }
-    };
-    
-    initializeAuth();
-    
+    // Clean up the subscription when the component unmounts
     return () => {
       subscription.unsubscribe();
     };
@@ -82,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('profiles')
         .select('role')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error checking admin status:', error);
@@ -101,24 +108,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string): Promise<void> => {
     console.log("Attempting to sign in user:", email);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    
-    if (error) {
-      console.error("Sign in error:", error);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error("Sign in error:", error);
+        throw error;
+      }
+      
+      console.log("Sign in successful for:", data.user?.email);
+    } catch (error) {
+      console.error("Sign in exception:", error);
       throw error;
     }
-    
-    console.log("Sign in successful for:", data.user?.email);
-    return;
   };
 
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Sign out error:", error);
+  const signOut = async (): Promise<void> => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Sign out error:", error);
+        throw error;
+      }
+    } catch (error) {
+      console.error("Sign out exception:", error);
       throw error;
     }
   };

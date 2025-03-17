@@ -8,6 +8,8 @@ import { toast } from '@/components/ui/use-toast';
 import Terminal from '@/components/Terminal';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -92,6 +94,15 @@ const Login = () => {
           </Terminal>
 
           <div className="glass-panel p-6 rounded-md">
+            {errorDetails && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  {errorDetails}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Input
@@ -114,12 +125,6 @@ const Login = () => {
                   required
                 />
               </div>
-
-              {errorDetails && (
-                <div className="bg-red-500/20 border border-red-500/50 p-3 rounded text-sm text-white break-words">
-                  <p className="font-mono">Error: {errorDetails}</p>
-                </div>
-              )}
 
               <Button 
                 type="submit" 
