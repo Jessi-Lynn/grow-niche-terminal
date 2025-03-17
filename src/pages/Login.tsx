@@ -14,8 +14,8 @@ import { AlertTriangle } from 'lucide-react';
 const Login = () => {
   const navigate = useNavigate();
   const { signIn, user, isLoading: authLoading } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@test.com'); // Pre-filled for easier testing
+  const [password, setPassword] = useState('password123'); // Pre-filled for easier testing
   const [isLoading, setIsLoading] = useState(false);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
@@ -52,7 +52,7 @@ const Login = () => {
       // Handle specific error cases
       if (error.message) {
         if (error.message.includes('confirmation_token')) {
-          errorMessage = 'Authentication system error. There appears to be an issue with the Supabase configuration. Please contact support.';
+          errorMessage = 'This appears to be a Supabase database schema issue. Please check the Supabase project settings and auth configuration.';
         } else if (error.message.includes('Invalid login')) {
           errorMessage = 'Invalid email or password';
         } else if (error.message.includes('Email not confirmed')) {
