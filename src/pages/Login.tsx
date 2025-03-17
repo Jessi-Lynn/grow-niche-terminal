@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,38 +11,51 @@ import Footer from '@/components/Footer';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn, user } = useAuth();
+  const { signIn, user, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   // If user is already logged in, redirect to admin
-  if (user) {
-    navigate('/admin');
-    return null;
-  }
+  useEffect(() => {
+    if (user && !authLoading) {
+      navigate('/admin');
+    }
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isLoading) return;
+    
     setIsLoading(true);
     setErrorDetails(null);
 
     try {
       await signIn(email, password);
+      
       toast({
         title: 'Success',
         description: 'Logged in successfully',
       });
-      navigate('/admin');
+      
+      // Navigate is now handled by the useEffect
     } catch (error: any) {
       console.error('Login error:', error);
       
       // Extract detailed error information
-      const errorMessage = error.message || 'Failed to log in';
-      const errorCode = error.code || '';
+      let errorMessage = 'Failed to log in';
       
-      setErrorDetails(`${errorMessage} (Code: ${errorCode})`);
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Format error code if available
+      const errorCode = error.code || '';
+      const displayError = errorCode ? `${errorMessage} (Code: ${errorCode})` : errorMessage;
+      
+      setErrorDetails(displayError);
       
       toast({
         title: 'Authentication Error',
@@ -53,6 +66,20 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
+  // If still checking auth state, show loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-terminal-black flex items-center justify-center">
+        <p className="text-terminal-white">Loading...</p>
+      </div>
+    );
+  }
+
+  // If already logged in, don't render the form (useEffect will redirect)
+  if (user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-terminal-black">
