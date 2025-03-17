@@ -21,13 +21,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Initialize session and set up auth state change listener
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        console.log("Auth state changed:", _event, session?.user?.email);
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await checkAdminStatus(session.user.id);
+        } else {
+          setIsAdmin(false);
+          setIsLoading(false);
+        }
+      }
+    );
+    
+    // Get initial session
     const initializeAuth = async () => {
       try {
-        setIsLoading(true);
+        const { data, error } = await supabase.auth.getSession();
         
-        // Get initial session
-        const { data } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Error getting session:", error);
+          setIsLoading(false);
+          return;
+        }
+        
         setSession(data.session);
         setUser(data.session?.user ?? null);
         
@@ -36,33 +56,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setIsLoading(false);
         }
-        
-        // Set up auth state change listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (_event, session) => {
-            console.log("Auth state changed:", _event, session?.user?.email);
-            setSession(session);
-            setUser(session?.user ?? null);
-            
-            if (session?.user) {
-              await checkAdminStatus(session.user.id);
-            } else {
-              setIsAdmin(false);
-              setIsLoading(false);
-            }
-          }
-        );
-        
-        return () => {
-          subscription.unsubscribe();
-        };
       } catch (error) {
-        console.error("Auth initialization error:", error);
+        console.error("Error initializing auth:", error);
         setIsLoading(false);
       }
     };
     
     initializeAuth();
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const checkAdminStatus = async (userId: string | undefined) => {
@@ -107,12 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw error;
     }
     
-    if (!data.user || !data.session) {
-      console.error("Sign in failed: No user or session returned");
-      throw new Error("Authentication failed");
-    }
-    
-    console.log("Sign in successful for:", data.user.email);
+    console.log("Sign in successful for:", data.user?.email);
     return;
   };
 
