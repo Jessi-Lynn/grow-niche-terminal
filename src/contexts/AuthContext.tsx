@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initializeAuth = async () => {
       try {
         setIsLoading(true);
+        console.log('Initializing auth...');
         
         // Get the current session
         const { data, error } = await supabase.auth.getSession();
@@ -37,13 +38,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         
+        console.log('Initial session data:', data);
+        
         if (mounted && data.session) {
           setSession(data.session);
           setUser(data.session.user);
+          console.log('User authenticated:', data.session.user?.email);
           
           if (data.session.user) {
             await checkAdminStatus(data.session.user.id);
           }
+        } else {
+          console.log('No active session found');
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
@@ -83,16 +89,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAdminStatus = async (userId: string) => {
     if (!userId) {
+      console.log('No user ID provided for admin check');
       setIsAdmin(false);
       return;
     }
 
     try {
+      console.log('Checking admin status for user ID:', userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
-        .maybeSingle();  // Use maybeSingle instead of single to avoid errors
+        .maybeSingle();
 
       if (error) {
         console.error('Error checking admin status:', error);
@@ -101,9 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       console.log("Admin check result:", data);
-      setIsAdmin(data?.role === 'admin');
+      const isUserAdmin = data?.role === 'admin';
+      console.log(`User admin status: ${isUserAdmin ? 'ADMIN' : 'NOT ADMIN'}`);
+      setIsAdmin(isUserAdmin);
     } catch (error) {
-      console.error('Error in admin status check:', error);
+      console.error('Exception in admin status check:', error);
       setIsAdmin(false);
     }
   };
@@ -123,6 +134,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       console.log("Sign in successful for:", data.user?.email);
+      console.log("Session:", data.session);
+      
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${data.user?.email}!`,
+      });
       
       // Update admin status after successful login
       if (data.user) {
@@ -149,6 +166,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAdmin(false);
       
       console.log("User signed out successfully");
+      
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully.",
+      });
     } catch (error) {
       console.error("Sign out exception:", error);
       throw error;

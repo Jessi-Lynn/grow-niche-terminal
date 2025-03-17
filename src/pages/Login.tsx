@@ -9,22 +9,32 @@ import Terminal from '@/components/Terminal';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn, user, isLoading: authLoading } = useAuth();
+  const { signIn, user, isLoading: authLoading, isAdmin } = useAuth();
   const [email, setEmail] = useState('admin@test.com'); // Pre-filled for easier testing
   const [password, setPassword] = useState('password123'); // Pre-filled for easier testing
   const [isLoading, setIsLoading] = useState(false);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   // If user is already logged in, redirect to admin
   useEffect(() => {
     if (user && !authLoading) {
-      navigate('/admin');
+      console.log("User is logged in:", user.email);
+      console.log("Is admin:", isAdmin);
+      
+      if (isAdmin) {
+        console.log("Redirecting to admin dashboard...");
+        navigate('/admin');
+      } else {
+        setInfoMessage("You're logged in but don't have admin privileges.");
+        console.log("User doesn't have admin privileges");
+      }
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, isAdmin, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,8 +43,10 @@ const Login = () => {
     
     setIsLoading(true);
     setErrorDetails(null);
+    setInfoMessage(null);
 
     try {
+      console.log("Starting login process...");
       await signIn(email, password);
       
       toast({
@@ -42,7 +54,8 @@ const Login = () => {
         description: 'Logged in successfully',
       });
       
-      // Navigate is handled by the useEffect
+      // Navigation is handled by the useEffect
+      console.log("Login successful, waiting for redirect...");
     } catch (error: any) {
       console.error('Login error:', error);
       
@@ -85,11 +98,6 @@ const Login = () => {
     );
   }
 
-  // If already logged in, don't render the form (useEffect will redirect)
-  if (user) {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-terminal-black">
       <Navbar />
@@ -110,37 +118,66 @@ const Login = () => {
               </Alert>
             )}
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-terminal-black border-terminal-white/20 text-terminal-white"
-                  required
-                />
+            {infoMessage && (
+              <Alert className="mb-4 bg-blue-500/10 border-blue-500/50">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  {infoMessage}
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {user ? (
+              <div className="text-center">
+                <p className="text-terminal-white mb-4">
+                  You are already logged in as <strong>{user.email}</strong>
+                </p>
+                {isAdmin ? (
+                  <Button 
+                    onClick={() => navigate('/admin')}
+                    className="w-full bg-terminal-red hover:bg-terminal-red/80"
+                  >
+                    Go to Admin Dashboard
+                  </Button>
+                ) : (
+                  <p className="text-terminal-white/70">
+                    Your account does not have admin privileges.
+                  </p>
+                )}
               </div>
-              
-              <div>
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-terminal-black border-terminal-white/20 text-terminal-white"
-                  required
-                />
-              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="bg-terminal-black border-terminal-white/20 text-terminal-white"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="bg-terminal-black border-terminal-white/20 text-terminal-white"
+                    required
+                  />
+                </div>
 
-              <Button 
-                type="submit" 
-                className="w-full bg-terminal-red hover:bg-terminal-red/80"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Logging in...' : 'Login'}
-              </Button>
-            </form>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-terminal-red hover:bg-terminal-red/80"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Logging in...' : 'Login'}
+                </Button>
+              </form>
+            )}
           </div>
         </div>
       </section>
