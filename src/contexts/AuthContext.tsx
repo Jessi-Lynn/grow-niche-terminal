@@ -38,8 +38,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         
-        console.log('Initial session data:', data);
-        
         if (mounted && data.session) {
           setSession(data.session);
           setUser(data.session.user);
@@ -47,8 +45,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (data.session.user) {
             await checkAdminStatus(data.session.user.id);
           }
-        } else {
-          console.log('No active session found');
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
@@ -116,85 +112,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Attempting sign in for user:", email);
       
-      // First, try to sign in
       const { data, error } = await supabase.auth.signInWithPassword({
         email, password
       });
       
       if (error) {
-        console.log("Sign in failed, attempting to create admin user:", error.message);
-        
-        // Only try to create the admin user if credentials match our expected admin
-        if (email === 'admin@test.com' && password === 'password123') {
-          // Try to create the admin user
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email, password
-          });
-          
-          if (signUpError) {
-            console.error("Admin signup error:", signUpError);
-            toast({
-              title: "Error",
-              description: signUpError.message,
-              variant: "destructive"
-            });
-            throw signUpError;
-          }
-          
-          if (signUpData.user) {
-            console.log("Admin user created successfully:", signUpData.user.email);
-            
-            // Set admin role in profiles table
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .insert({
-                id: signUpData.user.id,
-                email: signUpData.user.email,
-                role: 'admin'
-              });
-              
-            if (insertError) {
-              console.error("Error setting admin role:", insertError);
-              toast({
-                title: "Warning",
-                description: "User created but role setting failed. Please try again.",
-                variant: "destructive"
-              });
-            }
-            
-            // Try signing in again after creating the user
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-              email, password
-            });
-            
-            if (signInError) {
-              console.error("Sign in after creation error:", signInError);
-              throw signInError;
-            }
-            
-            setSession(signInData.session);
-            setUser(signInData.user);
-            
-            if (signInData.user) {
-              await checkAdminStatus(signInData.user.id);
-            }
-            
-            toast({
-              title: "Success",
-              description: "Admin user created and logged in!",
-            });
-            
-            return;
-          }
-        } else {
-          // Not trying to create admin user, just throw the original error
-          toast({
-            title: "Authentication Error",
-            description: error.message,
-            variant: "destructive"
-          });
-          throw error;
-        }
+        console.error("Sign in error:", error.message);
+        toast({
+          title: "Authentication Error",
+          description: error.message,
+          variant: "destructive"
+        });
+        throw error;
       }
       
       console.log("Sign in successful for:", data.user?.email);

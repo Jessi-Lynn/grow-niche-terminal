@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { toast } from '@/components/ui/use-toast';
 import Terminal from '@/components/Terminal';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -14,20 +13,16 @@ import { AlertTriangle, Info, CheckCircle } from 'lucide-react';
 const Login = () => {
   const navigate = useNavigate();
   const { signIn, user, isLoading: authLoading, isAdmin } = useAuth();
-  const [email, setEmail] = useState('admin@test.com'); // Pre-filled for easier testing
-  const [password, setPassword] = useState('password123'); // Pre-filled for easier testing
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  // If user is already logged in, redirect to admin
+  // If user is already logged in, redirect to admin if they're an admin
   useEffect(() => {
     if (user && !authLoading) {
-      console.log("User is logged in:", user.email);
-      console.log("Is admin:", isAdmin);
-      
       if (isAdmin) {
-        console.log("Redirecting to admin dashboard...");
         setMessage("Admin privileges detected. Redirecting to admin dashboard...");
         setTimeout(() => navigate('/admin'), 1000);
       } else {
@@ -39,6 +34,11 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!email || !password) {
+      setError("Email and password are required");
+      return;
+    }
+    
     if (isLoading) return;
     
     setIsLoading(true);
@@ -46,11 +46,8 @@ const Login = () => {
     setMessage(null);
 
     try {
-      console.log("Starting login process...");
       await signIn(email, password);
-      
       // Navigation is handled by the useEffect
-      console.log("Login successful, waiting for redirect...");
     } catch (error: any) {
       console.error('Login error:', error);
       setError(error.message || 'Failed to log in');
@@ -75,8 +72,8 @@ const Login = () => {
       <section className="pt-32 pb-16 px-4">
         <div className="container mx-auto max-w-md">
           <Terminal title="terminal@growyourniche: ~/login" className="mx-auto mb-8">
-            Please log in to access the admin dashboard.
-            Credentials: admin@test.com / password123
+            <p>Please log in with your admin credentials to access the admin dashboard.</p>
+            <p className="mt-2 text-terminal-white/70">Contact your administrator if you need access.</p>
           </Terminal>
 
           <div className="glass-panel p-6 rounded-md">
