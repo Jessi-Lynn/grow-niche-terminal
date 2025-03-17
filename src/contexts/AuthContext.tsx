@@ -88,13 +88,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      console.log("Checking admin status for user ID:", userId);
-      
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
-        .maybeSingle();
+        .maybeSingle();  // Use maybeSingle instead of single to avoid errors
 
       if (error) {
         console.error('Error checking admin status:', error);
