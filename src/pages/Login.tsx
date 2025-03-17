@@ -9,7 +9,8 @@ import Terminal from '@/components/Terminal';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, Info } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -19,6 +20,34 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
+
+  // Debug function to check database connection and profiles
+  const checkProfiles = async () => {
+    try {
+      setDebugInfo("Checking database connection...");
+      
+      // Check if we can access the profiles table
+      const { data, error } = await supabase.from('profiles').select('*');
+      
+      if (error) {
+        setDebugInfo(`Database error: ${error.message}`);
+        return;
+      }
+      
+      setDebugInfo(`Connected to database. Found ${data?.length || 0} profiles.`);
+      
+      // Check for admin users
+      const adminProfiles = data?.filter(p => p.role === 'admin') || [];
+      if (adminProfiles.length > 0) {
+        setDebugInfo(prev => `${prev}\nFound ${adminProfiles.length} admin users.`);
+      } else {
+        setDebugInfo(prev => `${prev}\nNo admin users found in profiles table.`);
+      }
+    } catch (error) {
+      setDebugInfo(`Error checking profiles: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
 
   // If user is already logged in, redirect to admin
   useEffect(() => {
@@ -28,11 +57,17 @@ const Login = () => {
       
       if (isAdmin) {
         console.log("Redirecting to admin dashboard...");
-        navigate('/admin');
+        setInfoMessage("Admin privileges detected. Redirecting to admin dashboard...");
+        setTimeout(() => navigate('/admin'), 1000);
       } else {
         setInfoMessage("You're logged in but don't have admin privileges.");
         console.log("User doesn't have admin privileges");
       }
+    }
+    
+    if (!authLoading) {
+      // Check profiles when component loads and not loading
+      checkProfiles();
     }
   }, [user, authLoading, isAdmin, navigate]);
 
@@ -53,6 +88,8 @@ const Login = () => {
         title: 'Success',
         description: 'Logged in successfully',
       });
+      
+      setInfoMessage("Login successful! Checking admin privileges...");
       
       // Navigation is handled by the useEffect
       console.log("Login successful, waiting for redirect...");
@@ -106,6 +143,7 @@ const Login = () => {
         <div className="container mx-auto max-w-md">
           <Terminal title="terminal@growyourniche: ~/login" className="mx-auto mb-8">
             Please log in to access the admin dashboard.
+            Credentials: admin@test.com / password123
           </Terminal>
 
           <div className="glass-panel p-6 rounded-md">
@@ -127,11 +165,23 @@ const Login = () => {
               </Alert>
             )}
             
+            {debugInfo && (
+              <Alert className="mb-4 bg-gray-500/10 border-gray-500/50 text-xs font-mono">
+                <AlertDescription className="whitespace-pre-wrap">
+                  {debugInfo}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             {user ? (
               <div className="text-center">
-                <p className="text-terminal-white mb-4">
-                  You are already logged in as <strong>{user.email}</strong>
-                </p>
+                <Alert className="mb-4 bg-green-500/10 border-green-500/50">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <AlertDescription>
+                    You are logged in as <strong>{user.email}</strong>
+                  </AlertDescription>
+                </Alert>
+                
                 {isAdmin ? (
                   <Button 
                     onClick={() => navigate('/admin')}
@@ -140,9 +190,17 @@ const Login = () => {
                     Go to Admin Dashboard
                   </Button>
                 ) : (
-                  <p className="text-terminal-white/70">
-                    Your account does not have admin privileges.
-                  </p>
+                  <div>
+                    <p className="text-terminal-white/70 mb-4">
+                      Your account does not have admin privileges.
+                    </p>
+                    <Button
+                      onClick={checkProfiles}
+                      className="w-full bg-terminal-white/10 hover:bg-terminal-white/20 mb-2"
+                    >
+                      Debug Check
+                    </Button>
+                  </div>
                 )}
               </div>
             ) : (
@@ -175,6 +233,14 @@ const Login = () => {
                   disabled={isLoading}
                 >
                   {isLoading ? 'Logging in...' : 'Login'}
+                </Button>
+                
+                <Button
+                  type="button"
+                  onClick={checkProfiles}
+                  className="w-full bg-terminal-white/10 hover:bg-terminal-white/20"
+                >
+                  Debug Check
                 </Button>
               </form>
             )}

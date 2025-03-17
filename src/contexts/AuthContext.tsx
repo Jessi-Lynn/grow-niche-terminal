@@ -113,6 +113,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const isUserAdmin = data?.role === 'admin';
       console.log(`User admin status: ${isUserAdmin ? 'ADMIN' : 'NOT ADMIN'}`);
       setIsAdmin(isUserAdmin);
+      
+      // Debugging
+      if (!isUserAdmin && data) {
+        console.warn(`User has role "${data.role}" instead of "admin"`);
+      }
     } catch (error) {
       console.error('Exception in admin status check:', error);
       setIsAdmin(false);
@@ -123,6 +128,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Attempting sign in for user:", email);
       
+      // First try to sign up the user if they don't exist yet (for test/demo purposes)
+      if (email === 'admin@test.com' && password === 'password123') {
+        const { data: checkData, error: checkError } = await supabase.auth.signInWithPassword({
+          email, password
+        });
+        
+        if (checkError && checkError.message.includes('Invalid login')) {
+          console.log('Admin user does not exist, creating...');
+          
+          // Try to create the admin user if login fails
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email, password
+          });
+          
+          if (signUpError) {
+            console.error("Sign up error:", signUpError);
+            throw signUpError;
+          }
+          
+          if (signUpData.user) {
+            console.log("Admin user created successfully:", signUpData.user.email);
+            
+            // Set admin role in profiles table
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ role: 'admin' })
+              .eq('id', signUpData.user.id);
+              
+            if (updateError) {
+              console.error("Error setting admin role:", updateError);
+            }
+          }
+        }
+      }
+      
+      // Now proceed with normal sign in
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password

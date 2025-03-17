@@ -26,13 +26,24 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading, isAdmin } = useAuth();
   
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-terminal-black flex items-center justify-center text-terminal-white">
+        <p>Verifying authentication...</p>
+      </div>
+    );
   }
   
-  if (!user || !isAdmin) {
-    return <Navigate to="/login" />;
+  if (!user) {
+    console.log("Access denied: User not logged in");
+    return <Navigate to="/login" replace />;
   }
   
+  if (!isAdmin) {
+    console.log("Access denied: User is not an admin");
+    return <Navigate to="/login" replace />;
+  }
+  
+  console.log("Access granted: User is authenticated and has admin privileges");
   return <>{children}</>;
 }
 
