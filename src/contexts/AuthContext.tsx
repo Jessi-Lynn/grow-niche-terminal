@@ -118,11 +118,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error) {
         console.error("Sign in error:", error.message);
-        toast({
-          title: "Authentication Error",
-          description: error.message,
-          variant: "destructive"
-        });
+        
+        // Specifically handle the confirmation_token NULL error
+        if (error.message.includes("confirmation_token") || error.message.includes("Database error")) {
+          toast({
+            title: "Authentication Error",
+            description: "There was a database issue with authentication. Please contact your administrator.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Authentication Error",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
         throw error;
       }
       

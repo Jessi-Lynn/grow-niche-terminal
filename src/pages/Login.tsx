@@ -50,7 +50,14 @@ const Login = () => {
       // Navigation is handled by the useEffect
     } catch (error: any) {
       console.error('Login error:', error);
-      setError(error.message || 'Failed to log in');
+      
+      // Check for specific database errors
+      if (error.message && (error.message.includes("confirmation_token") || error.message.includes("Database error"))) {
+        setError("There's a database issue with authentication. Please contact your administrator.");
+      } else {
+        // Default error message
+        setError(error.message || 'Failed to log in. Please check your credentials.');
+      }
     } finally {
       setIsLoading(false);
     }
