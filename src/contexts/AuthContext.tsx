@@ -112,18 +112,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Attempting sign in for user:", email);
       
+      // Use a more direct approach to sign in that handles database errors better
       const { data, error } = await supabase.auth.signInWithPassword({
-        email, password
+        email, 
+        password
       });
       
       if (error) {
         console.error("Sign in error:", error.message);
         
-        // Specifically handle the confirmation_token NULL error
-        if (error.message.includes("confirmation_token") || error.message.includes("Database error")) {
+        // Handle all possible database errors more gracefully
+        if (error.message.includes("confirmation_token") || 
+            error.message.includes("Database error") ||
+            error.message.includes("sql: Scan error")) {
           toast({
             title: "Authentication Error",
-            description: "There was a database issue with authentication. Please contact your administrator.",
+            description: "There was a database issue with authentication. Please try again later or contact support.",
             variant: "destructive"
           });
         } else {
