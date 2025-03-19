@@ -22,6 +22,7 @@ const Login = () => {
   // If user is already logged in, redirect to admin if they're an admin
   useEffect(() => {
     if (user && !authLoading) {
+      console.log("User is logged in:", user.email, "isAdmin:", isAdmin);
       if (isAdmin) {
         setMessage("Admin privileges detected. Redirecting to admin dashboard...");
         setTimeout(() => navigate('/admin'), 1000);
@@ -46,7 +47,9 @@ const Login = () => {
     setMessage(null);
 
     try {
+      console.log("Login attempt for:", email);
       await signIn(email, password);
+      console.log("Login successful, checking admin status...");
       // Navigation is handled by the useEffect
     } catch (error: any) {
       console.error('Login error:', error);

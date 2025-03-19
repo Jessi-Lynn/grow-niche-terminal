@@ -22,9 +22,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
-
-    // Initial session fetch
+    // Set up the auth state change listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        console.log(`Auth state changed: ${event}`, newSession?.user?.email);
+        
+        setSession(newSession);
+        setUser(newSession?.user || null);
+        
+        if (newSession?.user) {
+          await checkAdminStatus(newSession.user.id);
+        } else {
+          setIsAdmin(false);
+        }
+      }
+    );
+    
+    // THEN check for existing session
     const initializeAuth = async () => {
       try {
         setIsLoading(true);
@@ -35,49 +49,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (error) {
           console.error('Initial session error:', error);
+          setIsLoading(false);
           return;
         }
         
-        if (mounted && data.session) {
+        if (data.session) {
+          console.log('Existing session found for:', data.session.user?.email);
           setSession(data.session);
           setUser(data.session.user);
           
           if (data.session.user) {
             await checkAdminStatus(data.session.user.id);
           }
+        } else {
+          console.log('No existing session found');
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
     initializeAuth();
-
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log(`Auth state changed: ${event}`, newSession?.user?.email);
-        
-        if (mounted) {
-          setSession(newSession);
-          setUser(newSession?.user || null);
-          
-          if (newSession?.user) {
-            await checkAdminStatus(newSession.user.id);
-          } else {
-            setIsAdmin(false);
-          }
-        }
-      }
-    );
     
     // Cleanup function
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -112,7 +109,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Attempting sign in for user:", email);
       
-      // Use a more direct approach to sign in that handles database errors better
+      // Clear existing session first to prevent potential conflicts
+      await supabase.auth.signOut();
+      
+      // Attempt to sign in with credentials
       const { data, error } = await supabase.auth.signInWithPassword({
         email, 
         password
