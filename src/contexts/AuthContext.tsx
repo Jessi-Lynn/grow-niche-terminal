@@ -21,39 +21,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Separate function to check admin status that can be called independently
+  // Separate function to check admin status
   const checkAdminStatus = async (userId: string) => {
     try {
       console.log('Checking admin status for user ID:', userId);
       
-      // Check if profile exists before checking admin status
-      const { data: profileExists, error: profileCheckError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle();
-        
-      if (profileCheckError) {
-        console.error('Error checking if profile exists:', profileCheckError);
-        setIsAdmin(false);
-        return;
-      }
-      
-      // If profile doesn't exist yet, wait and try again (could happen right after signup)
-      if (!profileExists) {
-        console.log('Profile not found, waiting for it to be created...');
-        await new Promise(resolve => setTimeout(resolve, 3000));
-      }
-      
-      // Now check for admin status
+      // Check admin status using maybeSingle to avoid errors
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
         .maybeSingle();
 
-      console.log("Admin check result:", data, "Error:", error);
-      
       if (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
@@ -73,12 +52,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('AuthProvider mounted');
     let mounted = true;
     
-    const initAuth = async () => {
+    async function initAuth() {
       try {
         setIsLoading(true);
         
-        // First, set up the listener for auth state changes
-        const { data: authListener } = supabase.auth.onAuthStateChange(
+        // Get the initial session
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Error getting current session:', sessionError);
+          if (mounted) setIsLoading(false);
+          return;
+        }
+        
+        // Set the session and user if we have one
+        if (mounted && currentSession) {
+          console.log('Current session found:', currentSession.user?.email);
+          setSession(currentSession);
+          setUser(currentSession.user);
+          
+          // Check admin status if user exists
+          if (currentSession.user) {
+            await checkAdminStatus(currentSession.user.id);
+          }
+        } else {
+          console.log('No current session found');
+        }
+        
+        // Set up the auth state change listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log(`Auth state changed: ${event}`, newSession?.user?.email);
             
@@ -88,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setSession(newSession);
               setUser(newSession.user);
               
-              // Check admin status whenever we get a new session
+              // Check admin status on auth state change
               if (newSession.user) {
                 await checkAdminStatus(newSession.user.id);
               }
@@ -100,38 +102,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         );
         
-        // Then get the current session
-        const { data: currentSession, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Error getting current session:', sessionError);
-          if (mounted) setIsLoading(false);
-          return;
-        }
-        
-        if (currentSession?.session && mounted) {
-          console.log('Current session found:', currentSession.session.user?.email);
-          setSession(currentSession.session);
-          setUser(currentSession.session.user);
-          
-          // Check admin status on initial load if we have a session
-          if (currentSession.session.user) {
-            await checkAdminStatus(currentSession.session.user.id);
-          }
-        } else {
-          console.log('No current session found');
-        }
-        
+        // Clean up the loading state
         if (mounted) setIsLoading(false);
         
         return () => {
-          authListener.subscription.unsubscribe();
+          subscription.unsubscribe();
         };
       } catch (error) {
         console.error('Auth initialization error:', error);
         if (mounted) setIsLoading(false);
       }
-    };
+    }
     
     initAuth();
     
@@ -146,8 +127,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       console.log("Attempting sign in for user:", email);
       
-      // First sign out to ensure clean state
+      // First sign out to ensure clean state - this helps avoid the confirmation_token error
       await supabase.auth.signOut();
+      
+      // Wait a moment to ensure the signout is processed
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Attempt to sign in with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -158,30 +142,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error("Sign in error:", error.message);
         
-        // Display friendly error message based on error type
-        if (error.message.includes("Invalid login credentials")) {
-          toast({
-            title: "Login Failed",
-            description: "Invalid email or password. Please try again.",
-            variant: "destructive"
-          });
-        } else if (
-          error.message.includes("confirmation_token") || 
-          error.message.includes("Database error") ||
-          error.message.includes("sql: Scan error")
-        ) {
-          toast({
-            title: "System Error",
-            description: "There was a temporary database issue. Please try again in a moment.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Login Error",
-            description: error.message,
-            variant: "destructive"
-          });
-        }
+        // Display friendly error message
+        toast({
+          title: "Login Failed",
+          description: error.message.includes("Invalid login credentials") 
+            ? "Invalid email or password. Please try again."
+            : "An error occurred during login. Please try again.",
+          variant: "destructive"
+        });
         
         throw error;
       }

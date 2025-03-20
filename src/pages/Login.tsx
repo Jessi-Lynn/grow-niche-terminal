@@ -19,10 +19,16 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Clear error when email or password changes
+  useEffect(() => {
+    if (error) setError(null);
+  }, [email, password]);
+
   // Handle redirection if user is already logged in
   useEffect(() => {
     if (user && !authLoading) {
       console.log("User is logged in:", user.email, "isAdmin:", isAdmin);
+      
       if (isAdmin) {
         setMessage("Admin privileges detected. Redirecting to admin dashboard...");
         const timer = setTimeout(() => navigate('/admin'), 2000);
@@ -48,21 +54,12 @@ const Login = () => {
     setMessage("Attempting to log in...");
 
     try {
-      console.log("Login attempt for:", email);
       await signIn(email, password);
-      console.log("Login successful, checking admin status...");
       setMessage("Login successful! Checking privileges...");
       // Navigation is handled by the useEffect
     } catch (error: any) {
       console.error('Login error:', error);
-      
-      // Only set error message if it's not already handled by the AuthContext
-      if (!error.message?.includes("confirmation_token") && 
-          !error.message?.includes("Database error") &&
-          !error.message?.includes("sql: Scan error")) {
-        setError(error.message || 'An unexpected error occurred');
-      }
-      
+      setError(error.message || 'An unexpected error occurred');
       setMessage(null);
     } finally {
       setIsLoading(false);
