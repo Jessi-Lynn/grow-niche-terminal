@@ -25,7 +25,7 @@ const Login = () => {
       console.log("User is logged in:", user.email, "isAdmin:", isAdmin);
       if (isAdmin) {
         setMessage("Admin privileges detected. Redirecting to admin dashboard...");
-        setTimeout(() => navigate('/admin'), 1000);
+        setTimeout(() => navigate('/admin'), 1500);
       } else {
         setMessage("You're logged in but don't have admin privileges.");
       }

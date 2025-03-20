@@ -21,67 +21,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => {
-    // Set up the auth state change listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log(`Auth state changed: ${event}`, newSession?.user?.email);
-        
-        setSession(newSession);
-        setUser(newSession?.user || null);
-        
-        if (newSession?.user) {
-          await checkAdminStatus(newSession.user.id);
-        } else {
-          setIsAdmin(false);
-        }
-      }
-    );
-    
-    // THEN check for existing session
-    const initializeAuth = async () => {
-      try {
-        setIsLoading(true);
-        console.log('Initializing auth...');
-        
-        // Get the current session
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Initial session error:', error);
-          setIsLoading(false);
-          return;
-        }
-        
-        if (data.session) {
-          console.log('Existing session found for:', data.session.user?.email);
-          setSession(data.session);
-          setUser(data.session.user);
-          
-          if (data.session.user) {
-            await checkAdminStatus(data.session.user.id);
-          }
-        } else {
-          console.log('No existing session found');
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeAuth();
-    
-    // Cleanup function
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
   const checkAdminStatus = async (userId: string) => {
     try {
       console.log('Checking admin status for user ID:', userId);
+      
+      // Add a small delay to ensure the profile has been created
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const { data, error } = await supabase
         .from('profiles')
@@ -105,14 +50,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  useEffect(() => {
+    let isActive = true;
+    
+    // First set up the listener for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        console.log(`Auth state changed: ${event}`, newSession?.user?.email);
+        
+        if (!isActive) return;
+        
+        setSession(newSession);
+        setUser(newSession?.user || null);
+        
+        if (newSession?.user) {
+          await checkAdminStatus(newSession.user.id);
+        } else {
+          setIsAdmin(false);
+        }
+      }
+    );
+    
+    // Then check the current session
+    const initializeAuth = async () => {
+      try {
+        setIsLoading(true);
+        console.log('Initializing auth...');
+        
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Initial session error:', error);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (data.session && isActive) {
+          console.log('Existing session found for:', data.session.user?.email);
+          setSession(data.session);
+          setUser(data.session.user);
+          
+          if (data.session.user) {
+            await checkAdminStatus(data.session.user.id);
+          }
+        } else {
+          console.log('No existing session found');
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+    
+    // Cleanup function
+    return () => {
+      isActive = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const signIn = async (email: string, password: string): Promise<void> => {
     try {
       console.log("Attempting sign in for user:", email);
       
-      // Clear existing session first to prevent potential conflicts
-      await supabase.auth.signOut();
-      
-      // Attempt to sign in with credentials
       const { data, error } = await supabase.auth.signInWithPassword({
         email, 
         password
