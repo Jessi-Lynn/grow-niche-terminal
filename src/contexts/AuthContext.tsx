@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
@@ -25,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Checking admin status for user ID:', userId);
       
       // Add a longer delay to ensure the profile has been created
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       const { data, error } = await supabase
         .from('profiles')
@@ -61,8 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('Initializing auth...');
         
         // First, set up the listener for future auth state changes
-        // Keeping reference to subscription for cleanup
-        const subscription = supabase.auth.onAuthStateChange(
+        const { data } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log(`Auth state changed: ${event}`, newSession?.user?.email);
             
@@ -79,8 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         );
 
+        // Store subscription for cleanup
+        const subscription = data.subscription;
+
         // Then check the current session
-        const { data, error } = await supabase.auth.getSession();
+        const { data: sessionData, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Initial session error:', error);
@@ -88,13 +91,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         
-        if (data.session && isActive) {
-          console.log('Existing session found for:', data.session.user?.email);
-          setSession(data.session);
-          setUser(data.session.user);
+        if (sessionData.session && isActive) {
+          console.log('Existing session found for:', sessionData.session.user?.email);
+          setSession(sessionData.session);
+          setUser(sessionData.session.user);
           
-          if (data.session.user) {
-            await checkAdminStatus(data.session.user.id);
+          if (sessionData.session.user) {
+            await checkAdminStatus(sessionData.session.user.id);
           }
         } else {
           console.log('No existing session found');
