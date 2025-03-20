@@ -19,13 +19,14 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  // If user is already logged in, redirect to admin if they're an admin
+  // Handle redirection if user is already logged in
   useEffect(() => {
     if (user && !authLoading) {
       console.log("User is logged in:", user.email, "isAdmin:", isAdmin);
       if (isAdmin) {
         setMessage("Admin privileges detected. Redirecting to admin dashboard...");
-        setTimeout(() => navigate('/admin'), 1500);
+        const timer = setTimeout(() => navigate('/admin'), 2000);
+        return () => clearTimeout(timer);
       } else {
         setMessage("You're logged in but don't have admin privileges.");
       }
@@ -44,12 +45,13 @@ const Login = () => {
     
     setIsLoading(true);
     setError(null);
-    setMessage(null);
+    setMessage("Attempting to log in...");
 
     try {
       console.log("Login attempt for:", email);
       await signIn(email, password);
       console.log("Login successful, checking admin status...");
+      setMessage("Login successful! Checking privileges...");
       // Navigation is handled by the useEffect
     } catch (error: any) {
       console.error('Login error:', error);
@@ -59,13 +61,15 @@ const Login = () => {
           error.message.includes("confirmation_token") || 
           error.message.includes("Database error") ||
           error.message.includes("sql: Scan error"))) {
-        setError("There's a database issue with authentication. Please try again later or contact support.");
+        setError("There's a database issue with authentication. Please try again in a moment.");
       } else if (error.message && error.message.includes("Invalid login credentials")) {
         setError("Invalid email or password. Please check your credentials and try again.");
       } else {
         // Default error message
         setError(error.message || 'Failed to log in. Please check your credentials.');
       }
+      
+      setMessage(null);
     } finally {
       setIsLoading(false);
     }

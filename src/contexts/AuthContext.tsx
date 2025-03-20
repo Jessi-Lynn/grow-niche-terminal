@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
@@ -25,8 +24,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('Checking admin status for user ID:', userId);
       
-      // Add a small delay to ensure the profile has been created
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Add a longer delay to ensure the profile has been created
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const { data, error } = await supabase
         .from('profiles')
@@ -34,13 +33,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .maybeSingle();
 
+      console.log("Admin check result:", data, "Error:", error);
+      
       if (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
         return;
       }
       
-      console.log("Admin check result:", data);
       const isUserAdmin = data?.role === 'admin';
       console.log(`User admin status: ${isUserAdmin ? 'ADMIN' : 'NOT ADMIN'}`);
       setIsAdmin(isUserAdmin);
@@ -53,30 +53,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isActive = true;
     
-    // First set up the listener for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log(`Auth state changed: ${event}`, newSession?.user?.email);
-        
-        if (!isActive) return;
-        
-        setSession(newSession);
-        setUser(newSession?.user || null);
-        
-        if (newSession?.user) {
-          await checkAdminStatus(newSession.user.id);
-        } else {
-          setIsAdmin(false);
-        }
-      }
-    );
-    
-    // Then check the current session
     const initializeAuth = async () => {
       try {
+        if (!isActive) return;
+        
         setIsLoading(true);
         console.log('Initializing auth...');
         
+        // First, set up the listener for future auth state changes
+        // Keeping reference to subscription for cleanup
+        const subscription = supabase.auth.onAuthStateChange(
+          async (event, newSession) => {
+            console.log(`Auth state changed: ${event}`, newSession?.user?.email);
+            
+            if (!isActive) return;
+            
+            setSession(newSession);
+            setUser(newSession?.user || null);
+            
+            if (newSession?.user) {
+              await checkAdminStatus(newSession.user.id);
+            } else {
+              setIsAdmin(false);
+            }
+          }
+        );
+
+        // Then check the current session
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -96,9 +99,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           console.log('No existing session found');
         }
+        
+        if (isActive) {
+          setIsLoading(false);
+        }
+        
+        // Cleanup function
+        return () => {
+          isActive = false;
+          subscription.unsubscribe();
+        };
+        
       } catch (error) {
         console.error('Auth initialization error:', error);
-      } finally {
         if (isActive) {
           setIsLoading(false);
         }
@@ -107,10 +120,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth();
     
-    // Cleanup function
     return () => {
       isActive = false;
-      subscription.unsubscribe();
     };
   }, []);
 
@@ -118,6 +129,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Attempting sign in for user:", email);
       
+      // First sign out to clear any potentially corrupted session
+      await supabase.auth.signOut();
+      
+      // Then attempt to sign in
       const { data, error } = await supabase.auth.signInWithPassword({
         email, 
         password
@@ -126,13 +141,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error("Sign in error:", error.message);
         
-        // Handle all possible database errors more gracefully
+        // Handle database error specifically
         if (error.message.includes("confirmation_token") || 
             error.message.includes("Database error") ||
             error.message.includes("sql: Scan error")) {
           toast({
             title: "Authentication Error",
-            description: "There was a database issue with authentication. Please try again later or contact support.",
+            description: "There was a database issue with authentication. Please try again in a moment.",
             variant: "destructive"
           });
         } else {
