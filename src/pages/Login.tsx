@@ -56,17 +56,11 @@ const Login = () => {
     } catch (error: any) {
       console.error('Login error:', error);
       
-      // More comprehensive error handling
-      if (error.message && (
-          error.message.includes("confirmation_token") || 
-          error.message.includes("Database error") ||
-          error.message.includes("sql: Scan error"))) {
-        setError("There's a database issue with authentication. Please try again in a moment.");
-      } else if (error.message && error.message.includes("Invalid login credentials")) {
-        setError("Invalid email or password. Please check your credentials and try again.");
-      } else {
-        // Default error message
-        setError(error.message || 'Failed to log in. Please check your credentials.');
+      // Only set error message if it's not already handled by the AuthContext
+      if (!error.message?.includes("confirmation_token") && 
+          !error.message?.includes("Database error") &&
+          !error.message?.includes("sql: Scan error")) {
+        setError(error.message || 'An unexpected error occurred');
       }
       
       setMessage(null);

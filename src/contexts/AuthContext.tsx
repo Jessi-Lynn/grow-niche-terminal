@@ -21,13 +21,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Separate function to check admin status that can be called independently
   const checkAdminStatus = async (userId: string) => {
     try {
       console.log('Checking admin status for user ID:', userId);
       
-      // Add a longer delay to ensure the profile has been created
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Check if profile exists before checking admin status
+      const { data: profileExists, error: profileCheckError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+        
+      if (profileCheckError) {
+        console.error('Error checking if profile exists:', profileCheckError);
+        setIsAdmin(false);
+        return;
+      }
       
+      // If profile doesn't exist yet, wait and try again (could happen right after signup)
+      if (!profileExists) {
+        console.log('Profile not found, waiting for it to be created...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+      
+      // Now check for admin status
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
@@ -52,157 +70,175 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    let isActive = true;
+    console.log('AuthProvider mounted');
+    let mounted = true;
     
-    const initializeAuth = async () => {
+    const initAuth = async () => {
       try {
-        if (!isActive) return;
-        
         setIsLoading(true);
-        console.log('Initializing auth...');
         
-        // First, set up the listener for future auth state changes
-        const { data } = supabase.auth.onAuthStateChange(
+        // First, set up the listener for auth state changes
+        const { data: authListener } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log(`Auth state changed: ${event}`, newSession?.user?.email);
             
-            if (!isActive) return;
+            if (!mounted) return;
             
-            setSession(newSession);
-            setUser(newSession?.user || null);
-            
-            if (newSession?.user) {
-              await checkAdminStatus(newSession.user.id);
+            if (newSession) {
+              setSession(newSession);
+              setUser(newSession.user);
+              
+              // Check admin status whenever we get a new session
+              if (newSession.user) {
+                await checkAdminStatus(newSession.user.id);
+              }
             } else {
+              setSession(null);
+              setUser(null);
               setIsAdmin(false);
             }
           }
         );
-
-        // Store subscription for cleanup
-        const subscription = data.subscription;
-
-        // Then check the current session
-        const { data: sessionData, error } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error('Initial session error:', error);
-          setIsLoading(false);
+        // Then get the current session
+        const { data: currentSession, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Error getting current session:', sessionError);
+          if (mounted) setIsLoading(false);
           return;
         }
         
-        if (sessionData.session && isActive) {
-          console.log('Existing session found for:', sessionData.session.user?.email);
-          setSession(sessionData.session);
-          setUser(sessionData.session.user);
+        if (currentSession?.session && mounted) {
+          console.log('Current session found:', currentSession.session.user?.email);
+          setSession(currentSession.session);
+          setUser(currentSession.session.user);
           
-          if (sessionData.session.user) {
-            await checkAdminStatus(sessionData.session.user.id);
+          // Check admin status on initial load if we have a session
+          if (currentSession.session.user) {
+            await checkAdminStatus(currentSession.session.user.id);
           }
         } else {
-          console.log('No existing session found');
+          console.log('No current session found');
         }
         
-        if (isActive) {
-          setIsLoading(false);
-        }
+        if (mounted) setIsLoading(false);
         
-        // Cleanup function
         return () => {
-          isActive = false;
-          subscription.unsubscribe();
+          authListener.subscription.unsubscribe();
         };
-        
       } catch (error) {
         console.error('Auth initialization error:', error);
-        if (isActive) {
-          setIsLoading(false);
-        }
+        if (mounted) setIsLoading(false);
       }
     };
-
-    initializeAuth();
+    
+    initAuth();
     
     return () => {
-      isActive = false;
+      console.log('AuthProvider unmounting');
+      mounted = false;
     };
   }, []);
 
   const signIn = async (email: string, password: string): Promise<void> => {
     try {
+      setIsLoading(true);
       console.log("Attempting sign in for user:", email);
       
-      // First sign out to clear any potentially corrupted session
+      // First sign out to ensure clean state
       await supabase.auth.signOut();
       
-      // Then attempt to sign in
+      // Attempt to sign in with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
-        email, 
+        email,
         password
       });
       
       if (error) {
         console.error("Sign in error:", error.message);
         
-        // Handle database error specifically
-        if (error.message.includes("confirmation_token") || 
-            error.message.includes("Database error") ||
-            error.message.includes("sql: Scan error")) {
+        // Display friendly error message based on error type
+        if (error.message.includes("Invalid login credentials")) {
           toast({
-            title: "Authentication Error",
-            description: "There was a database issue with authentication. Please try again in a moment.",
+            title: "Login Failed",
+            description: "Invalid email or password. Please try again.",
+            variant: "destructive"
+          });
+        } else if (
+          error.message.includes("confirmation_token") || 
+          error.message.includes("Database error") ||
+          error.message.includes("sql: Scan error")
+        ) {
+          toast({
+            title: "System Error",
+            description: "There was a temporary database issue. Please try again in a moment.",
             variant: "destructive"
           });
         } else {
           toast({
-            title: "Authentication Error",
+            title: "Login Error",
             description: error.message,
             variant: "destructive"
           });
         }
+        
         throw error;
       }
       
       console.log("Sign in successful for:", data.user?.email);
       
+      // Set session and user if login successful
       setSession(data.session);
       setUser(data.user);
       
       toast({
-        title: "Login successful",
+        title: "Login Successful",
         description: `Welcome back, ${data.user?.email}!`,
       });
       
-      // Update admin status after successful login
+      // Check admin status after successful login
       if (data.user) {
         await checkAdminStatus(data.user.id);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Sign in exception:", error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const signOut = async (): Promise<void> => {
     try {
+      setIsLoading(true);
+      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
+        console.error("Sign out error:", error.message);
+        toast({
+          title: "Sign Out Error",
+          description: error.message,
+          variant: "destructive"
+        });
         throw error;
       }
       
-      // Reset states after sign out
+      // Reset state after successful sign out
       setSession(null);
       setUser(null);
       setIsAdmin(false);
       
       toast({
-        title: "Signed out",
+        title: "Signed Out",
         description: "You have been signed out successfully.",
       });
     } catch (error) {
       console.error("Sign out exception:", error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
