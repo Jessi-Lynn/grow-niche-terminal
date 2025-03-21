@@ -25,12 +25,19 @@ export const useAuthActions = ({
       setIsLoading(true);
       console.log("Attempting sign in for user:", email);
       
-      // First clear any existing sessions completely
-      await supabase.auth.signOut();
+      // First, completely clear all local storage auth data
+      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('supabase.auth.expires_at');
+      localStorage.removeItem('supabase.auth.expires_in');
       
-      // Critical: Wait to ensure the signout is processed
-      // This helps avoid the confirmation_token error
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Explicitly sign out to clear any existing sessions
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      // Extended wait time to ensure proper cleaning of sessions
+      // This is critical for avoiding the confirmation_token error
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      console.log("Clean state established, attempting login...");
       
       // Now attempt to sign in with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -39,14 +46,14 @@ export const useAuthActions = ({
       });
       
       if (error) {
-        console.error("Sign in error:", error.message);
+        console.error("Sign in error:", error.message, error);
         
         // Display friendly error message
         toast({
           title: "Login Failed",
           description: error.message.includes("Invalid login credentials") 
             ? "Invalid email or password. Please try again."
-            : "An error occurred during login. Please try again.",
+            : `Authentication error: ${error.message}. Please try again later.`,
           variant: "destructive"
         });
         
@@ -80,7 +87,7 @@ export const useAuthActions = ({
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
       
       if (error) {
         console.error("Sign out error:", error.message);

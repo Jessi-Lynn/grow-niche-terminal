@@ -31,6 +31,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         setIsLoading(true);
         
+        // Clear any stale data in localStorage that might be causing issues
+        const keysToRemove = Object.keys(localStorage).filter(key => 
+          key.startsWith('supabase.auth.')
+        );
+        
+        keysToRemove.forEach(key => {
+          console.log('Removing stale auth key:', key);
+          localStorage.removeItem(key);
+        });
+        
         // Set up the auth state change listener FIRST to catch all events
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
@@ -53,6 +63,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
         );
+        
+        // Wait a moment before checking the session to avoid race conditions
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // THEN get the initial session - this sequence helps avoid race conditions
         const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
