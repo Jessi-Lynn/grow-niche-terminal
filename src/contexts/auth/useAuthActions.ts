@@ -25,13 +25,14 @@ export const useAuthActions = ({
       setIsLoading(true);
       console.log("Attempting sign in for user:", email);
       
-      // First sign out to ensure clean state - this helps avoid the confirmation_token error
+      // First clear any existing sessions completely
       await supabase.auth.signOut();
       
-      // Wait a moment to ensure the signout is processed
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Critical: Wait to ensure the signout is processed
+      // This helps avoid the confirmation_token error
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Attempt to sign in with email and password
+      // Now attempt to sign in with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
