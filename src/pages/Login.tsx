@@ -12,7 +12,7 @@ import { AlertTriangle, Info, CheckCircle } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn, user, isLoading: authLoading, isAdmin } = useAuth();
+  const { signIn, user, isLoading: authLoading, isAdmin, isAuthInitialized } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,18 +26,19 @@ const Login = () => {
 
   // Handle redirection if user is already logged in
   useEffect(() => {
-    if (user && !authLoading) {
+    // Only check after auth is fully initialized
+    if (user && isAuthInitialized) {
       console.log("User is logged in:", user.email, "isAdmin:", isAdmin);
       
       if (isAdmin) {
         setMessage("Admin privileges detected. Redirecting to admin dashboard...");
-        const timer = setTimeout(() => navigate('/admin'), 2000);
+        const timer = setTimeout(() => navigate('/admin'), 1000);
         return () => clearTimeout(timer);
       } else {
         setMessage("You're logged in but don't have admin privileges.");
       }
     }
-  }, [user, authLoading, isAdmin, navigate]);
+  }, [user, authLoading, isAdmin, isAuthInitialized, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +68,7 @@ const Login = () => {
   };
 
   // If still checking auth state, show loading
-  if (authLoading) {
+  if (authLoading && !isAuthInitialized) {
     return (
       <div className="min-h-screen bg-terminal-black flex items-center justify-center">
         <p className="text-terminal-white">Loading authentication status...</p>

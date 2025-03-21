@@ -44,7 +44,6 @@ export const useAuthActions = ({
       }
       
       // Step 3: Wait 5 seconds to ensure complete auth state reset
-      // This is critical to resolve the confirmation_token error
       console.log("Waiting for auth state to fully clear (5s)...");
       await new Promise(resolve => setTimeout(resolve, 5000));
       
@@ -59,80 +58,51 @@ export const useAuthActions = ({
       
       console.log("Auth state should now be fully reset, attempting login...");
       
-      // Step 5: Attempt login with modified approach
-      try {
-        // First try with .signInWithPassword
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        
-        if (error) throw error;
-        
-        console.log("Sign in successful for:", data.user?.email);
-        
-        // Set session and user if login successful
-        setSession(data.session);
-        setUser(data.user);
-        
-        toast({
-          title: "Login Successful",
-          description: `Welcome back, ${data.user?.email}!`,
-        });
-        
-        // Check admin status after successful login
-        if (data.user) {
-          await checkAdminStatus(data.user.id);
-        }
-      } catch (innerError: any) {
-        console.error("Sign in first attempt error:", innerError);
-        
-        // If we hit the confirmation_token error, try an alternative approach
-        if (innerError.message && (
-            innerError.message.includes("confirmation_token") || 
-            innerError.message.includes("Database error")
-        )) {
-          console.log("Using alternative sign-in approach...");
-          
-          // Wait a moment before trying the alternative approach
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Alternative approach - using email+password separate login
-          try {
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-              email,
-              password
-            });
-            
-            if (authError) throw authError;
-            
-            console.log("Alternative sign in successful for:", authData.user?.email);
-            
-            // Set session and user if login successful
-            setSession(authData.session);
-            setUser(authData.user);
-            
-            toast({
-              title: "Login Successful",
-              description: `Welcome back, ${authData.user?.email}!`,
-            });
-            
-            // Check admin status after successful login
-            if (authData.user) {
-              await checkAdminStatus(authData.user.id);
-            }
-          } catch (altError) {
-            console.error("Alternative sign in approach failed:", altError);
-            handleAuthError(altError);
-          }
+      // Step 5: Attempt login with standard approach
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        // If we hit the confirmation_token error or database error, show specific message
+        if (error.message?.includes("confirmation_token") || 
+            error.message?.includes("Database error")) {
+          console.error("Sign in error with confirmation_token or database error:", error);
+          throw new Error("Authentication service temporary error. Please try again in a moment.");
         } else {
-          // For other errors, just handle them normally
-          handleAuthError(innerError);
+          // For other errors, throw the original error
+          throw error;
         }
       }
-    } catch (error) {
+      
+      console.log("Sign in successful for:", data.user?.email);
+      
+      // Set session and user if login successful
+      setSession(data.session);
+      setUser(data.user);
+      
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${data.user?.email}!`,
+      });
+      
+      // Check admin status after successful login
+      if (data.user) {
+        try {
+          console.log("Checking admin status for user:", data.user.id);
+          await checkAdminStatus(data.user.id);
+        } catch (adminCheckError) {
+          console.error("Error checking admin status:", adminCheckError);
+          // Don't throw here, just log the error - auth is still successful
+          // but admin status check failed
+        }
+      }
+      
+    } catch (error: any) {
       console.error("Sign in exception:", error);
       handleAuthError(error);
+      throw error; // Re-throw to allow login page to handle the error state
     } finally {
       setIsLoading(false);
     }
