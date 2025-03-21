@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { AuthContextType } from './types';
 import { useAdminCheck } from './useAdminCheck';
 import { useAuthActions } from './useAuthActions';
+import { toast } from '@/components/ui/use-toast';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -30,30 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         setIsLoading(true);
         
-        // Get the initial session
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Error getting current session:', sessionError);
-          if (mounted) setIsLoading(false);
-          return;
-        }
-        
-        // Set the session and user if we have one
-        if (mounted && currentSession) {
-          console.log('Current session found:', currentSession.user?.email);
-          setSession(currentSession);
-          setUser(currentSession.user);
-          
-          // Check admin status if user exists
-          if (currentSession.user) {
-            await checkAdminStatus(currentSession.user.id);
-          }
-        } else {
-          console.log('No current session found');
-        }
-        
-        // Set up the auth state change listener
+        // Set up the auth state change listener FIRST to catch all events
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log(`Auth state changed: ${event}`, newSession?.user?.email);
@@ -76,6 +54,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         );
         
+        // THEN get the initial session - this sequence helps avoid race conditions
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Error getting current session:', sessionError);
+          toast({
+            title: "Authentication Error",
+            description: "There was a problem connecting to the authentication service.",
+            variant: "destructive"
+          });
+          if (mounted) setIsLoading(false);
+          return;
+        }
+        
+        // Set the session and user if we have one
+        if (mounted && currentSession) {
+          console.log('Current session found:', currentSession.user?.email);
+          setSession(currentSession);
+          setUser(currentSession.user);
+          
+          // Check admin status if user exists
+          if (currentSession.user) {
+            await checkAdminStatus(currentSession.user.id);
+          }
+        } else {
+          console.log('No current session found');
+        }
+        
         // Clean up the loading state
         if (mounted) setIsLoading(false);
         
@@ -84,6 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       } catch (error) {
         console.error('Auth initialization error:', error);
+        toast({
+          title: "Initialization Error",
+          description: "There was a problem setting up authentication.",
+          variant: "destructive"
+        });
         if (mounted) setIsLoading(false);
       }
     }

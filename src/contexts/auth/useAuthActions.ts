@@ -29,7 +29,7 @@ export const useAuthActions = ({
       await supabase.auth.signOut();
       
       // Wait a moment to ensure the signout is processed
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Attempt to sign in with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
