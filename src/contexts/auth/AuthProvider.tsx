@@ -31,17 +31,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         setIsLoading(true);
         
-        // Clear any stale data in localStorage that might be causing issues
-        const keysToRemove = Object.keys(localStorage).filter(key => 
-          key.startsWith('supabase.auth.')
-        );
-        
-        keysToRemove.forEach(key => {
-          console.log('Removing stale auth key:', key);
-          localStorage.removeItem(key);
+        // CRITICAL: First clear any stale data from browsers
+        // This prevents confirmation_token errors
+        console.log('Cleaning browser storage...');
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('supabase')) {
+            console.log('Removing stale auth key:', key);
+            localStorage.removeItem(key);
+          }
         });
         
-        // Set up the auth state change listener FIRST to catch all events
+        // Force a clean slate by signing out globally first
+        try {
+          await supabase.auth.signOut({ scope: 'global' });
+          console.log('Successfully cleared any existing sessions');
+        } catch (e) {
+          console.log('Error during initial signout (normal if no session):', e);
+        }
+        
+        // Wait for signout to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('Starting fresh authentication check...');
+        
+        // Set up the auth state change listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log(`Auth state changed: ${event}`, newSession?.user?.email);
@@ -64,10 +76,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         );
         
-        // Wait a moment before checking the session to avoid race conditions
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait a moment before checking the session
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // THEN get the initial session - this sequence helps avoid race conditions
+        console.log('Checking for existing session...');
         const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {

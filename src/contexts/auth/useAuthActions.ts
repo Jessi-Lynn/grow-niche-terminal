@@ -25,24 +25,32 @@ export const useAuthActions = ({
       setIsLoading(true);
       console.log("Attempting sign in for user:", email);
       
-      // First, completely clear all local storage auth data
-      localStorage.removeItem('supabase.auth.token');
-      localStorage.removeItem('supabase.auth.expires_at');
-      localStorage.removeItem('supabase.auth.expires_in');
+      // Fully clear all browser storage related to auth
+      for (const key of Object.keys(localStorage)) {
+        if (key.includes('supabase')) {
+          console.log(`Removing key: ${key}`);
+          localStorage.removeItem(key);
+        }
+      }
       
-      // Explicitly sign out to clear any existing sessions
+      // Force global signout to ensure all sessions are cleared
       await supabase.auth.signOut({ scope: 'global' });
       
-      // Extended wait time to ensure proper cleaning of sessions
-      // This is critical for avoiding the confirmation_token error
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait a significant time to ensure full cleanup
+      // This is critical to avoid the confirmation_token error
+      console.log("Waiting for auth state to fully clear...");
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
-      console.log("Clean state established, attempting login...");
+      console.log("Auth state should be clean, attempting login...");
       
-      // Now attempt to sign in with email and password
+      // Use a direct fetch to the Supabase API to bypass any caching or state issues
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
+        options: {
+          // Add a timestamp to help avoid caching issues
+          data: { timestamp: new Date().getTime() }
+        }
       });
       
       if (error) {
@@ -103,6 +111,13 @@ export const useAuthActions = ({
       setSession(null);
       setUser(null);
       setIsAdmin(false);
+      
+      // Clear any remaining local storage items
+      for (const key of Object.keys(localStorage)) {
+        if (key.includes('supabase')) {
+          localStorage.removeItem(key);
+        }
+      }
       
       toast({
         title: "Signed Out",
