@@ -1,4 +1,3 @@
-
 import { Dispatch, SetStateAction } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -44,13 +43,10 @@ export const useAuthActions = ({
       console.log("Auth state should be clean, attempting login...");
       
       // Use a direct fetch to the Supabase API to bypass any caching or state issues
+      // Remove the options.data property that was causing the TypeScript error
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password,
-        options: {
-          // Add a timestamp to help avoid caching issues
-          data: { timestamp: new Date().getTime() }
-        }
+        password
       });
       
       if (error) {
