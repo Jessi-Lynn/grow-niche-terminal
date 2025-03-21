@@ -31,29 +31,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         setIsLoading(true);
         
-        // CRITICAL: First clear any stale data from browsers
-        // This prevents confirmation_token errors
-        console.log('Cleaning browser storage...');
-        Object.keys(localStorage).forEach(key => {
-          if (key.includes('supabase')) {
-            console.log('Removing stale auth key:', key);
-            localStorage.removeItem(key);
+        // Step 1: Aggressively clear all auth-related localStorage items
+        console.log('Thorough cleanup of browser storage...');
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.includes('supabase') || key.includes('sb-'))) {
+            keysToRemove.push(key);
           }
-        });
-        
-        // Force a clean slate by signing out globally first
-        try {
-          await supabase.auth.signOut({ scope: 'global' });
-          console.log('Successfully cleared any existing sessions');
-        } catch (e) {
-          console.log('Error during initial signout (normal if no session):', e);
         }
         
-        // Wait for signout to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Remove identified keys
+        keysToRemove.forEach(key => {
+          console.log('Removing stale auth key:', key);
+          localStorage.removeItem(key);
+        });
+        
+        // Step 2: Force a clean slate by signing out globally first
+        try {
+          const { error } = await supabase.auth.signOut({ scope: 'global' });
+          if (error) {
+            console.warn('Error during initial signout:', error);
+          } else {
+            console.log('Successfully cleared any existing sessions');
+          }
+        } catch (e) {
+          console.warn('Exception during initial signout (expected if no session):', e);
+        }
+        
+        // Step 3: Wait longer for signout to complete
+        console.log('Waiting for auth state to fully clear...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
         console.log('Starting fresh authentication check...');
         
-        // Set up the auth state change listener
+        // Step 4: After cleanup, set up the auth state change listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log(`Auth state changed: ${event}`, newSession?.user?.email);
@@ -76,35 +87,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         );
         
-        // Wait a moment before checking the session
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Step 5: Wait a moment before checking the session
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
+        // Step 6: Check for existing session with error handling
         console.log('Checking for existing session...');
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Error getting current session:', sessionError);
-          toast({
-            title: "Authentication Error",
-            description: "There was a problem connecting to the authentication service.",
-            variant: "destructive"
-          });
-          if (mounted) setIsLoading(false);
-          return;
-        }
-        
-        // Set the session and user if we have one
-        if (mounted && currentSession) {
-          console.log('Current session found:', currentSession.user?.email);
-          setSession(currentSession);
-          setUser(currentSession.user);
+        try {
+          const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
           
-          // Check admin status if user exists
-          if (currentSession.user) {
-            await checkAdminStatus(currentSession.user.id);
+          if (sessionError) {
+            console.error('Error getting current session:', sessionError);
+            toast({
+              title: "Authentication Error",
+              description: "There was a problem connecting to the authentication service.",
+              variant: "destructive"
+            });
+            if (mounted) setIsLoading(false);
+            return;
           }
-        } else {
-          console.log('No current session found');
+          
+          // Set the session and user if we have one
+          if (mounted && currentSession) {
+            console.log('Current session found:', currentSession.user?.email);
+            setSession(currentSession);
+            setUser(currentSession.user);
+            
+            // Check admin status if user exists
+            if (currentSession.user) {
+              await checkAdminStatus(currentSession.user.id);
+            }
+          } else {
+            console.log('No current session found');
+          }
+        } catch (fetchSessionError) {
+          console.error('Exception getting session:', fetchSessionError);
+          if (mounted) {
+            toast({
+              title: "Session Error",
+              description: "Failed to check your login status. Please refresh the page.",
+              variant: "destructive"
+            });
+          }
         }
         
         // Clean up the loading state
