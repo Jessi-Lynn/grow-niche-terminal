@@ -13,6 +13,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authInitialized, setAuthInitialized] = useState(false);
   
   const { isAdmin, setIsAdmin, checkAdminStatus } = useAdminCheck();
   const { signIn, signOut } = useAuthActions({
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAdminStatus
   });
 
+  // Auth initialization
   useEffect(() => {
     console.log('AuthProvider mounted');
     let mounted = true;
@@ -64,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await new Promise(resolve => setTimeout(resolve, 3000));
         console.log('Starting fresh authentication check...');
         
-        // Step 4: After cleanup, set up the auth state change listener
+        // Step 4: Set up auth state change listener before checking session
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log(`Auth state changed: ${event}`, newSession?.user?.email);
@@ -77,7 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               
               // Check admin status on auth state change
               if (newSession.user) {
-                await checkAdminStatus(newSession.user.id);
+                try {
+                  await checkAdminStatus(newSession.user.id);
+                } catch (adminCheckError) {
+                  console.error('Admin check error:', adminCheckError);
+                }
               }
             } else {
               setSession(null);
@@ -87,34 +93,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         );
         
-        // Step 5: Wait a moment before checking the session
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Wait a moment before checking the session
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Step 6: Check for existing session with error handling
-        console.log('Checking for existing session...');
+        // Step 5: Check for existing session with error handling
         try {
-          const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+          console.log('Checking for existing session...');
+          const { data, error } = await supabase.auth.getSession();
           
-          if (sessionError) {
-            console.error('Error getting current session:', sessionError);
+          if (error) {
+            console.error('Error getting current session:', error);
             toast({
               title: "Authentication Error",
               description: "There was a problem connecting to the authentication service.",
               variant: "destructive"
             });
-            if (mounted) setIsLoading(false);
+            if (mounted) {
+              setIsLoading(false);
+              setAuthInitialized(true);
+            }
             return;
           }
           
           // Set the session and user if we have one
-          if (mounted && currentSession) {
-            console.log('Current session found:', currentSession.user?.email);
-            setSession(currentSession);
-            setUser(currentSession.user);
+          if (mounted && data.session) {
+            console.log('Current session found:', data.session.user?.email);
+            setSession(data.session);
+            setUser(data.session.user);
             
             // Check admin status if user exists
-            if (currentSession.user) {
-              await checkAdminStatus(currentSession.user.id);
+            if (data.session.user) {
+              try {
+                await checkAdminStatus(data.session.user.id);
+              } catch (adminCheckError) {
+                console.error('Admin check error:', adminCheckError);
+              }
             }
           } else {
             console.log('No current session found');
@@ -130,8 +143,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
         
-        // Clean up the loading state
-        if (mounted) setIsLoading(false);
+        // Finalize initialization
+        if (mounted) {
+          setIsLoading(false);
+          setAuthInitialized(true);
+        }
         
         return () => {
           subscription.unsubscribe();
@@ -143,7 +159,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           description: "There was a problem setting up authentication.",
           variant: "destructive"
         });
-        if (mounted) setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+          setAuthInitialized(true);
+        }
       }
     }
     
@@ -155,8 +174,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Provide clear feedback on auth status
+  const contextValue: AuthContextType = {
+    session, 
+    user, 
+    signIn, 
+    signOut, 
+    isLoading, 
+    isAdmin,
+    isAuthInitialized: authInitialized
+  };
+
   return (
-    <AuthContext.Provider value={{ session, user, signIn, signOut, isLoading, isAdmin }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

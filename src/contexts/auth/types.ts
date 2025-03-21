@@ -8,4 +8,5 @@ export interface AuthContextType {
   signOut: () => Promise<void>;
   isLoading: boolean;
   isAdmin: boolean;
+  isAuthInitialized: boolean;
 }

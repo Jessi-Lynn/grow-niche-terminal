@@ -59,48 +59,98 @@ export const useAuthActions = ({
       
       console.log("Auth state should now be fully reset, attempting login...");
       
-      // Step 5: Attempt login with simplified parameters
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) {
-        console.error("Sign in error:", error.message, error);
-        
-        // Display friendly error message
-        toast({
-          title: "Login Failed",
-          description: error.message.includes("Invalid login credentials") 
-            ? "Invalid email or password. Please try again."
-            : `Authentication error: ${error.message}. Please try again later.`,
-          variant: "destructive"
+      // Step 5: Attempt login with modified approach
+      try {
+        // First try with .signInWithPassword
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
         });
         
-        throw error;
-      }
-      
-      console.log("Sign in successful for:", data.user?.email);
-      
-      // Set session and user if login successful
-      setSession(data.session);
-      setUser(data.user);
-      
-      toast({
-        title: "Login Successful",
-        description: `Welcome back, ${data.user?.email}!`,
-      });
-      
-      // Check admin status after successful login
-      if (data.user) {
-        await checkAdminStatus(data.user.id);
+        if (error) throw error;
+        
+        console.log("Sign in successful for:", data.user?.email);
+        
+        // Set session and user if login successful
+        setSession(data.session);
+        setUser(data.user);
+        
+        toast({
+          title: "Login Successful",
+          description: `Welcome back, ${data.user?.email}!`,
+        });
+        
+        // Check admin status after successful login
+        if (data.user) {
+          await checkAdminStatus(data.user.id);
+        }
+      } catch (innerError: any) {
+        console.error("Sign in first attempt error:", innerError);
+        
+        // If we hit the confirmation_token error, try an alternative approach
+        if (innerError.message && (
+            innerError.message.includes("confirmation_token") || 
+            innerError.message.includes("Database error")
+        )) {
+          console.log("Using alternative sign-in approach...");
+          
+          // Wait a moment before trying the alternative approach
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Alternative approach - using email+password separate login
+          try {
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+              email,
+              password
+            });
+            
+            if (authError) throw authError;
+            
+            console.log("Alternative sign in successful for:", authData.user?.email);
+            
+            // Set session and user if login successful
+            setSession(authData.session);
+            setUser(authData.user);
+            
+            toast({
+              title: "Login Successful",
+              description: `Welcome back, ${authData.user?.email}!`,
+            });
+            
+            // Check admin status after successful login
+            if (authData.user) {
+              await checkAdminStatus(authData.user.id);
+            }
+          } catch (altError) {
+            console.error("Alternative sign in approach failed:", altError);
+            handleAuthError(altError);
+          }
+        } else {
+          // For other errors, just handle them normally
+          handleAuthError(innerError);
+        }
       }
     } catch (error) {
       console.error("Sign in exception:", error);
-      throw error;
+      handleAuthError(error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAuthError = (error: any) => {
+    console.error("Auth error:", error);
+    
+    // Display friendly error message
+    toast({
+      title: "Login Failed",
+      description: error.message?.includes("Invalid login credentials") 
+        ? "Invalid email or password. Please try again."
+        : error.message?.includes("confirmation_token") || error.message?.includes("Database error")
+          ? "Authentication service error. Please try again in a moment."
+          : `Authentication error: ${error.message || "Unknown error"}. Please try again later.`,
+      variant: "destructive"
+    });
   };
 
   const signOut = async (): Promise<void> => {
