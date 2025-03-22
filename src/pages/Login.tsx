@@ -26,19 +26,18 @@ const Login = () => {
 
   // Handle redirection if user is already logged in
   useEffect(() => {
-    // Only check after auth is fully initialized
-    if (user && isAuthInitialized) {
+    // Wait until auth is fully initialized before checking
+    if (!isAuthInitialized) return;
+    
+    if (user) {
       console.log("User is logged in:", user.email, "isAdmin:", isAdmin);
       
       if (isAdmin) {
-        setMessage("Admin privileges detected. Redirecting to admin dashboard...");
-        const timer = setTimeout(() => navigate('/admin'), 1000);
-        return () => clearTimeout(timer);
-      } else {
-        setMessage("You're logged in but don't have admin privileges.");
+        console.log("Redirecting to admin dashboard...");
+        navigate('/admin');
       }
     }
-  }, [user, authLoading, isAdmin, isAuthInitialized, navigate]);
+  }, [user, isAdmin, isAuthInitialized, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +56,7 @@ const Login = () => {
     try {
       await signIn(email, password);
       setMessage("Login successful! Checking privileges...");
-      // Navigation is handled by the useEffect
+      // Redirection is handled by the useEffect
     } catch (error: any) {
       console.error('Login error:', error);
       setError(error.message || 'An unexpected error occurred');
@@ -66,15 +65,6 @@ const Login = () => {
       setIsLoading(false);
     }
   };
-
-  // If still checking auth state, show loading
-  if (authLoading && !isAuthInitialized) {
-    return (
-      <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-        <p className="text-terminal-white">Loading authentication status...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-terminal-black">
@@ -155,9 +145,9 @@ const Login = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-terminal-red hover:bg-terminal-red/80"
-                  disabled={isLoading}
+                  disabled={isLoading || authLoading}
                 >
-                  {isLoading ? 'Logging in...' : 'Login'}
+                  {isLoading || authLoading ? 'Logging in...' : 'Login'}
                 </Button>
               </form>
             )}

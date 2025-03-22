@@ -25,8 +25,8 @@ export const useAuthActions = ({
       setIsLoading(true);
       console.log("Attempting sign in for user:", email);
       
-      // Step 1: Thoroughly clean localStorage to prevent token conflicts
-      console.log("Thoroughly cleaning localStorage...");
+      // Step 1: Clean localStorage to prevent token conflicts
+      console.log("Cleaning localStorage...");
       for (const key of Object.keys(localStorage)) {
         if (key.includes('supabase') || key.includes('sb-')) {
           console.log(`Removing key: ${key}`);
@@ -34,7 +34,7 @@ export const useAuthActions = ({
         }
       }
       
-      // Step 2: Force a global signout with retry mechanism
+      // Step 2: Force a global signout
       console.log("Performing global signout...");
       try {
         await supabase.auth.signOut({ scope: 'global' });
@@ -43,66 +43,55 @@ export const useAuthActions = ({
         console.warn("Initial signout error (continuing anyway):", signOutErr);
       }
       
-      // Step 3: Wait 5 seconds to ensure complete auth state reset
-      console.log("Waiting for auth state to fully clear (5s)...");
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      // Give a short pause to ensure auth state is clear
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Step 4: One more localStorage cleanup after the wait
-      console.log("Final localStorage cleanup...");
-      for (const key of Object.keys(localStorage)) {
-        if (key.includes('supabase') || key.includes('sb-')) {
-          console.log(`Removing key: ${key}`);
-          localStorage.removeItem(key);
-        }
-      }
+      console.log("Attempting login...");
       
-      console.log("Auth state should now be fully reset, attempting login...");
-      
-      // Step 5: Attempt login with standard approach
+      // Attempt login
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
       if (error) {
-        // If we hit the confirmation_token error or database error, show specific message
-        if (error.message?.includes("confirmation_token") || 
-            error.message?.includes("Database error")) {
-          console.error("Sign in error with confirmation_token or database error:", error);
-          throw new Error("Authentication service temporary error. Please try again in a moment.");
-        } else {
-          // For other errors, throw the original error
-          throw error;
+        // Handle database errors consistently
+        if (error.message?.includes("Database error") || 
+            error.message?.includes("confirmation_token")) {
+          console.error("Database connection error:", error);
+          throw new Error("Authentication service error. Please try again in a moment.");
         }
+        throw error;
       }
       
-      console.log("Sign in successful for:", data.user?.email);
+      if (!data.session || !data.user) {
+        throw new Error("Login failed: No session or user data returned");
+      }
       
-      // Set session and user if login successful
+      console.log("Sign in successful for:", data.user.email);
+      
+      // Set session and user immediately
       setSession(data.session);
       setUser(data.user);
       
       toast({
         title: "Login Successful",
-        description: `Welcome back, ${data.user?.email}!`,
+        description: `Welcome back, ${data.user.email}!`,
       });
       
       // Check admin status after successful login
-      if (data.user) {
-        try {
-          console.log("Checking admin status for user:", data.user.id);
-          await checkAdminStatus(data.user.id);
-        } catch (adminCheckError) {
-          console.error("Error checking admin status:", adminCheckError);
-          // Don't throw here, just log the error - auth is still successful
-          // but admin status check failed
-        }
+      try {
+        console.log("Checking admin status for user:", data.user.id);
+        await checkAdminStatus(data.user.id);
+      } catch (adminCheckError) {
+        console.error("Error checking admin status:", adminCheckError);
+        // Don't throw here, just log the error
       }
       
     } catch (error: any) {
       console.error("Sign in exception:", error);
       handleAuthError(error);
-      throw error; // Re-throw to allow login page to handle the error state
+      throw error; // Re-throw for the login page to handle
     } finally {
       setIsLoading(false);
     }
@@ -111,14 +100,10 @@ export const useAuthActions = ({
   const handleAuthError = (error: any) => {
     console.error("Auth error:", error);
     
-    // Display friendly error message
+    // Simplified error messages
     toast({
       title: "Login Failed",
-      description: error.message?.includes("Invalid login credentials") 
-        ? "Invalid email or password. Please try again."
-        : error.message?.includes("confirmation_token") || error.message?.includes("Database error")
-          ? "Authentication service error. Please try again in a moment."
-          : `Authentication error: ${error.message || "Unknown error"}. Please try again later.`,
+      description: error.message || "Authentication error. Please try again.",
       variant: "destructive"
     });
   };
