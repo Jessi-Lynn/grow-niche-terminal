@@ -28,12 +28,13 @@ const Login = () => {
   useEffect(() => {
     if (isAuthInitialized && user) {
       console.log("User authenticated:", user.email);
+      setLoginSuccess(true);
       
       if (isAdmin) {
         console.log("User is admin, redirecting to admin dashboard");
-        setLoginSuccess(true);
         // Short delay before redirect to ensure UI updates
-        setTimeout(() => navigate('/admin'), 1000);
+        const timer = setTimeout(() => navigate('/admin'), 1000);
+        return () => clearTimeout(timer);
       }
     }
   }, [user, isAdmin, isAuthInitialized, navigate]);
@@ -46,7 +47,7 @@ const Login = () => {
       return;
     }
     
-    if (formLoading) return;
+    if (formLoading || !isAuthInitialized) return;
     
     setFormLoading(true);
     setError(null);
@@ -54,7 +55,7 @@ const Login = () => {
     try {
       console.log("Attempting login with:", email);
       await signIn(email, password);
-      setLoginSuccess(true);
+      // Login success is now handled by the useEffect that watches for user changes
     } catch (error: any) {
       console.error('Login form error:', error);
       setError(error.message || 'An unexpected error occurred');

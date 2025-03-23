@@ -24,7 +24,9 @@ export const useAuthActions = ({
     try {
       setIsLoading(true);
       
-      // Simple signIn without the pre-cleanup which can cause issues
+      console.log("Attempting to sign in with email:", email);
+      
+      // Try a direct sign-in approach without pre-cleanup
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -33,20 +35,40 @@ export const useAuthActions = ({
       if (error) {
         console.error("Login error:", error);
         
-        // Handle database connection errors
+        // More specific error handling
         if (error.message?.includes("Database error")) {
-          throw new Error("Authentication service error. Please try again in a moment.");
+          toast({
+            title: "Service Temporarily Unavailable",
+            description: "We're experiencing technical difficulties. Please try again later.",
+            variant: "destructive"
+          });
+          throw new Error("Service temporarily unavailable. Please try again later.");
         }
         
-        // Handle invalid credentials specifically
         if (error.message?.includes("Invalid login credentials")) {
+          toast({
+            title: "Invalid Credentials",
+            description: "The email or password you entered is incorrect.",
+            variant: "destructive"
+          });
           throw new Error("Invalid email or password. Please try again.");
         }
         
+        // Generic error handling
+        toast({
+          title: "Login Failed",
+          description: error.message || "An unexpected error occurred.",
+          variant: "destructive"
+        });
         throw error;
       }
       
       if (!data.session || !data.user) {
+        toast({
+          title: "Login Failed",
+          description: "No session data was returned. Please try again.",
+          variant: "destructive"
+        });
         throw new Error("Login failed: No session data returned");
       }
       
@@ -56,6 +78,11 @@ export const useAuthActions = ({
       setSession(data.session);
       setUser(data.user);
       
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${data.user.email}!`,
+      });
+      
       // Check admin status
       try {
         await checkAdminStatus(data.user.id);
@@ -64,19 +91,18 @@ export const useAuthActions = ({
         // Continue even if admin check fails - the user is still logged in
       }
       
-      toast({
-        title: "Login Successful",
-        description: `Welcome back, ${data.user.email}!`,
-      });
-      
     } catch (error: any) {
       console.error("Sign in exception:", error);
       
-      toast({
-        title: "Login Failed",
-        description: error.message || "Authentication error. Please try again.",
-        variant: "destructive"
-      });
+      // If no toast has been shown yet, show a generic one
+      if (!error.message?.includes("Service temporarily unavailable") && 
+          !error.message?.includes("Invalid email or password")) {
+        toast({
+          title: "Authentication Error",
+          description: error.message || "Please try again later.",
+          variant: "destructive"
+        });
+      }
       
       throw error;
     } finally {
