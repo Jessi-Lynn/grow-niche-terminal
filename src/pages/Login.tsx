@@ -19,23 +19,24 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Clear error when email or password changes
+  // Clear error when input changes
   useEffect(() => {
     if (error) setError(null);
   }, [email, password]);
 
-  // Handle redirection if user is already logged in
+  // Handle redirection for logged-in users
   useEffect(() => {
-    // Wait until auth is fully initialized before checking
-    if (!isAuthInitialized) return;
+    // Only attempt redirection when auth is fully initialized
+    if (!isAuthInitialized) {
+      console.log("Auth not yet initialized, waiting...");
+      return;
+    }
     
-    if (user) {
-      console.log("User is logged in:", user.email, "isAdmin:", isAdmin);
-      
-      if (isAdmin) {
-        console.log("Redirecting to admin dashboard...");
-        navigate('/admin');
-      }
+    if (user && isAdmin) {
+      console.log("User is admin, redirecting to admin dashboard");
+      navigate('/admin');
+    } else if (user) {
+      console.log("User logged in but not admin:", user.email);
     }
   }, [user, isAdmin, isAuthInitialized, navigate]);
 
@@ -51,16 +52,14 @@ const Login = () => {
     
     setIsLoading(true);
     setError(null);
-    setMessage("Attempting to log in...");
-
+    
     try {
       await signIn(email, password);
-      setMessage("Login successful! Checking privileges...");
-      // Redirection is handled by the useEffect
+      // No need to set success message or redirect here
+      // The useEffect above will handle redirection when user state updates
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('Login form error:', error);
       setError(error.message || 'An unexpected error occurred');
-      setMessage(null);
     } finally {
       setIsLoading(false);
     }
@@ -78,6 +77,15 @@ const Login = () => {
           </Terminal>
 
           <div className="glass-panel p-6 rounded-md">
+            {!isAuthInitialized && (
+              <Alert className="mb-4 bg-blue-500/10 border-blue-500/50">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Initializing authentication...
+                </AlertDescription>
+              </Alert>
+            )}
+            
             {error && (
               <Alert variant="destructive" className="mb-4">
                 <AlertTriangle className="h-4 w-4" />
@@ -145,7 +153,7 @@ const Login = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-terminal-red hover:bg-terminal-red/80"
-                  disabled={isLoading || authLoading}
+                  disabled={isLoading || authLoading || !isAuthInitialized}
                 >
                   {isLoading || authLoading ? 'Logging in...' : 'Login'}
                 </Button>

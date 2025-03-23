@@ -23,96 +23,78 @@ export const useAuthActions = ({
   const signIn = async (email: string, password: string): Promise<void> => {
     try {
       setIsLoading(true);
-      console.log("Attempting sign in for user:", email);
       
-      // Step 1: Clean localStorage to prevent token conflicts
-      console.log("Cleaning localStorage...");
+      // Clean up any stale auth data
       for (const key of Object.keys(localStorage)) {
         if (key.includes('supabase') || key.includes('sb-')) {
-          console.log(`Removing key: ${key}`);
           localStorage.removeItem(key);
         }
       }
       
-      // Step 2: Force a global signout
-      console.log("Performing global signout...");
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-        console.log("Global signout successful");
-      } catch (signOutErr) {
-        console.warn("Initial signout error (continuing anyway):", signOutErr);
-      }
+      // Clear any existing session first
+      await supabase.auth.signOut();
       
-      // Give a short pause to ensure auth state is clear
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log("Attempting login...");
-      
-      // Attempt login
+      // Attempt login with improved error handling
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
       if (error) {
-        // Handle database errors consistently
+        console.error("Login error:", error);
+        
+        // Handle common error scenarios
         if (error.message?.includes("Database error") || 
             error.message?.includes("confirmation_token")) {
-          console.error("Database connection error:", error);
-          throw new Error("Authentication service error. Please try again in a moment.");
+          throw new Error("Supabase connection error. Please check your network and try again.");
         }
+        
+        // Handle invalid credentials specifically
+        if (error.message?.includes("Invalid login credentials")) {
+          throw new Error("Invalid email or password. Please try again.");
+        }
+        
         throw error;
       }
       
       if (!data.session || !data.user) {
-        throw new Error("Login failed: No session or user data returned");
+        throw new Error("Login failed: No session data returned");
       }
       
       console.log("Sign in successful for:", data.user.email);
       
-      // Set session and user immediately
+      // Set session and user
       setSession(data.session);
       setUser(data.user);
+      
+      // Check admin status
+      await checkAdminStatus(data.user.id);
       
       toast({
         title: "Login Successful",
         description: `Welcome back, ${data.user.email}!`,
       });
       
-      // Check admin status after successful login
-      try {
-        console.log("Checking admin status for user:", data.user.id);
-        await checkAdminStatus(data.user.id);
-      } catch (adminCheckError) {
-        console.error("Error checking admin status:", adminCheckError);
-        // Don't throw here, just log the error
-      }
-      
     } catch (error: any) {
       console.error("Sign in exception:", error);
-      handleAuthError(error);
-      throw error; // Re-throw for the login page to handle
+      
+      toast({
+        title: "Login Failed",
+        description: error.message || "Authentication error. Please try again.",
+        variant: "destructive"
+      });
+      
+      throw error;
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleAuthError = (error: any) => {
-    console.error("Auth error:", error);
-    
-    // Simplified error messages
-    toast({
-      title: "Login Failed",
-      description: error.message || "Authentication error. Please try again.",
-      variant: "destructive"
-    });
   };
 
   const signOut = async (): Promise<void> => {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error("Sign out error:", error.message);
@@ -124,12 +106,12 @@ export const useAuthActions = ({
         throw error;
       }
       
-      // Reset state after successful sign out
+      // Reset state
       setSession(null);
       setUser(null);
       setIsAdmin(false);
       
-      // Clear any remaining local storage items
+      // Clear local storage
       for (const key of Object.keys(localStorage)) {
         if (key.includes('supabase') || key.includes('sb-')) {
           localStorage.removeItem(key);
