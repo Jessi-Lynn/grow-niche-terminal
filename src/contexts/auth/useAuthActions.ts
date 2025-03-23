@@ -24,17 +24,7 @@ export const useAuthActions = ({
     try {
       setIsLoading(true);
       
-      // Clean up any stale auth data
-      for (const key of Object.keys(localStorage)) {
-        if (key.includes('supabase') || key.includes('sb-')) {
-          localStorage.removeItem(key);
-        }
-      }
-      
-      // Clear any existing session first
-      await supabase.auth.signOut();
-      
-      // Attempt login with improved error handling
+      // Simple signIn without the pre-cleanup which can cause issues
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -43,10 +33,9 @@ export const useAuthActions = ({
       if (error) {
         console.error("Login error:", error);
         
-        // Handle common error scenarios
-        if (error.message?.includes("Database error") || 
-            error.message?.includes("confirmation_token")) {
-          throw new Error("Supabase connection error. Please check your network and try again.");
+        // Handle database connection errors
+        if (error.message?.includes("Database error")) {
+          throw new Error("Authentication service error. Please try again in a moment.");
         }
         
         // Handle invalid credentials specifically
@@ -68,7 +57,12 @@ export const useAuthActions = ({
       setUser(data.user);
       
       // Check admin status
-      await checkAdminStatus(data.user.id);
+      try {
+        await checkAdminStatus(data.user.id);
+      } catch (adminCheckError) {
+        console.error("Admin check error:", adminCheckError);
+        // Continue even if admin check fails - the user is still logged in
+      }
       
       toast({
         title: "Login Successful",
@@ -110,13 +104,6 @@ export const useAuthActions = ({
       setSession(null);
       setUser(null);
       setIsAdmin(false);
-      
-      // Clear local storage
-      for (const key of Object.keys(localStorage)) {
-        if (key.includes('supabase') || key.includes('sb-')) {
-          localStorage.removeItem(key);
-        }
-      }
       
       toast({
         title: "Signed Out",

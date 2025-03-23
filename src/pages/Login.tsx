@@ -12,12 +12,12 @@ import { AlertTriangle, Info, CheckCircle } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn, user, isLoading: authLoading, isAdmin, isAuthInitialized } = useAuth();
+  const { signIn, user, isLoading, isAdmin, isAuthInitialized } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [loginSuccess, setLoginSuccess] = useState(false);
 
   // Clear error when input changes
   useEffect(() => {
@@ -26,17 +26,15 @@ const Login = () => {
 
   // Handle redirection for logged-in users
   useEffect(() => {
-    // Only attempt redirection when auth is fully initialized
-    if (!isAuthInitialized) {
-      console.log("Auth not yet initialized, waiting...");
-      return;
-    }
-    
-    if (user && isAdmin) {
-      console.log("User is admin, redirecting to admin dashboard");
-      navigate('/admin');
-    } else if (user) {
-      console.log("User logged in but not admin:", user.email);
+    if (isAuthInitialized && user) {
+      console.log("User authenticated:", user.email);
+      
+      if (isAdmin) {
+        console.log("User is admin, redirecting to admin dashboard");
+        setLoginSuccess(true);
+        // Short delay before redirect to ensure UI updates
+        setTimeout(() => navigate('/admin'), 1000);
+      }
     }
   }, [user, isAdmin, isAuthInitialized, navigate]);
 
@@ -48,22 +46,25 @@ const Login = () => {
       return;
     }
     
-    if (isLoading) return;
+    if (formLoading) return;
     
-    setIsLoading(true);
+    setFormLoading(true);
     setError(null);
     
     try {
+      console.log("Attempting login with:", email);
       await signIn(email, password);
-      // No need to set success message or redirect here
-      // The useEffect above will handle redirection when user state updates
+      setLoginSuccess(true);
     } catch (error: any) {
       console.error('Login form error:', error);
       setError(error.message || 'An unexpected error occurred');
+      setLoginSuccess(false);
     } finally {
-      setIsLoading(false);
+      setFormLoading(false);
     }
   };
+
+  const isButtonDisabled = formLoading || !isAuthInitialized;
 
   return (
     <div className="min-h-screen bg-terminal-black">
@@ -95,11 +96,11 @@ const Login = () => {
               </Alert>
             )}
             
-            {message && (
-              <Alert className="mb-4 bg-blue-500/10 border-blue-500/50">
-                <Info className="h-4 w-4" />
+            {loginSuccess && (
+              <Alert className="mb-4 bg-green-500/10 border-green-500/50">
+                <CheckCircle className="h-4 w-4 text-green-500" />
                 <AlertDescription>
-                  {message}
+                  Login successful! {isAdmin ? "Redirecting to admin dashboard..." : ""}
                 </AlertDescription>
               </Alert>
             )}
@@ -135,6 +136,7 @@ const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="bg-terminal-black border-terminal-white/20 text-terminal-white"
+                    disabled={formLoading}
                     required
                   />
                 </div>
@@ -146,6 +148,7 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="bg-terminal-black border-terminal-white/20 text-terminal-white"
+                    disabled={formLoading}
                     required
                   />
                 </div>
@@ -153,9 +156,9 @@ const Login = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-terminal-red hover:bg-terminal-red/80"
-                  disabled={isLoading || authLoading || !isAuthInitialized}
+                  disabled={isButtonDisabled}
                 >
-                  {isLoading || authLoading ? 'Logging in...' : 'Login'}
+                  {formLoading ? 'Logging in...' : 'Login'}
                 </Button>
               </form>
             )}
